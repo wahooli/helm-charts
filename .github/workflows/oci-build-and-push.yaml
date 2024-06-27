@@ -1,23 +1,6 @@
 name: Build and push OCI Chart
 
 on:
-  workflow_dispatch:
-    inputs:
-      charts:
-        description: 'JSON encoded array of chart names to build'
-        required: false
-        default: '[]'
-        type: string
-      force_push:
-        description: 'Push the chart even if version exists'
-        required: false
-        default: false
-        type: boolean
-      build_prerelease:
-        description: 'Build with prerelease tag'
-        required: false
-        default: false
-        type: boolean
   workflow_call:
     inputs:
       charts:
