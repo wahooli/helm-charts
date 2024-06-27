@@ -1,0 +1,83 @@
+name: Build and push OCI Chart
+
+on:
+  workflow_dispatch:
+    inputs:
+      charts:
+        description: 'JSON encoded array of chart names to build'
+        required: false
+        default: '[]'
+        type: string
+      force_push:
+        description: 'Push the chart even if version exists'
+        required: false
+        default: false
+        type: boolean
+      build_prerelease:
+        description: 'Build with prerelease tag'
+        required: false
+        default: false
+        type: boolean
+  workflow_call:
+    inputs:
+      charts:
+        description: 'JSON encoded array of chart names to build'
+        required: false
+        default: '[]'
+        type: string
+      force_push:
+        description: 'Push the chart even if version exists'
+        required: false
+        default: false
+        type: boolean
+      build_prerelease:
+        description: 'Build with prerelease tag'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  REGISTRY: ghcr.io
+  CHARTS_BASE_DIR: charts
+
+jobs:
+  oci-push:
+    name: Push charts to oci registry
+    runs-on: helm-charts-runner-set
+    steps:
+    - name: Install git, wget and curl
+      if: runner.environment == 'self-hosted'
+      run: |
+        sudo apt-get update -qqy
+        sudo apt-get install curl wget software-properties-common -qqy --no-install-recommends
+        sudo add-apt-repository -y ppa:git-core/ppa
+        sudo apt-get update -qqy
+        sudo apt-get install -y git
+    - name: Checkout
+      uses: actions/checkout@v4.1.7
+      with:
+        fetch-depth: 0
+    - name: Setup Kubernetes Tools
+      uses: yokawasa/action-setup-kube-tools@v0.11.1
+      with:
+        setup-tools: |
+          helm
+          yq
+    - name: Registry login
+      uses: docker/login-action@v3.2.0
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    - name: Package & Push Helm Charts
+      shell: bash
+      run: .ci/oci-build-and-push.sh
+      env:
+        GITHUB_ACTOR: "${{ github.actor }}"
+        GITHUB_ACTOR_ID: "${{ github.actor_id }}"
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        OCI_REGISTRY: "${{ env.REGISTRY }}"
+        CHARTS: "${{ inputs.charts }}"
+        BUILD_PRERELEASE: "${{ inputs.build_prerelease }}"
+        CHARTS_BASE_DIR: "${{ env.CHARTS_BASE_DIR }}"
+        FORCE_PUSH: "${{ inputs.force_push }}"
