@@ -27,7 +27,7 @@ env:
 jobs:
   lint-test:
     name: Lint and test
-    runs-on: helm-charts-runner-set
+    runs-on: ubuntu-latest
     outputs:
       charts: ${{ steps.list-changed.outputs.charts }}
     steps:
