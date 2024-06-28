@@ -2,13 +2,10 @@ apiVersion: v2
 name: common
 description: Template function library
 type: library
-version: 0.0.1
-
+version: 0.0.2
 maintainers:
-- name: wahooli
-  url: https://github.com/wahooli/
-
+  - name: wahooli
+    url: https://github.com/wahooli/
 home: https://charts.wahoo.li
-
 sources:
-- https://github.com/wahooli/helm-charts
+  - https://github.com/wahooli/helm-charts
