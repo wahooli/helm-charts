@@ -1,0 +1,289 @@
+apiVersion: v1
+entries:
+  avahi:
+  - apiVersion: v2
+    appVersion: latest
+    created: "2024-06-28T15:43:40.278905868Z"
+    description: A Helm chart for Kubernetes
+    digest: 978a941294fcfbea8c9407abe4d59cbbac940f2ef83e4d661967d74e057f6df9
+    icon: https://upload.wikimedia.org/wikipedia/commons/7/7b/Avahi-logo.svg
+    maintainers:
+    - name: wahooli
+      url: https://github.com/wahooli/
+    name: avahi
+    sources:
+    - https://github.com/wahooli/helm-charts
+    type: application
+    urls:
+    - https://github.com/wahooli/helm-charts/releases/download/avahi-0.1.1/avahi-0.1.1.tgz
+    version: 0.1.1
+  cloudflare-tunnel:
+  - apiVersion: v2
+    appVersion: 2024.3.0
+    created: "2024-06-28T15:43:40.386831849Z"
+    dependencies:
+    - name: common
+      repository: oci://ghcr.io/wahooli/charts
+      version: 0.0.1
+    description: Creation of a cloudflared deployment - a reverse tunnel for an environment
+    digest: 463b56f48d2c0d4aec6f8b81d2a9232e7e6e9f12c9da5af58d5706ababf6752e
+    icon: https://developers.cloudflare.com/cloudflare-one/favicon-32x32.png
+    maintainers:
+    - name: wahooli
+      url: https://github.com/wahooli/
+    name: cloudflare-tunnel
+    sources:
+    - https://github.com/wahooli/helm-charts
+    type: application
+    urls:
+    - https://github.com/wahooli/helm-charts/releases/download/cloudflare-tunnel-0.1.0/cloudflare-tunnel-0.1.0.tgz
+    version: 0.1.0
+  common:
+  - apiVersion: v2
+    created: "2024-06-28T15:43:40.477914756Z"
+    description: Template function library
+    digest: 6413af071cdb95cfb3e9b86421caf3534455af6b9e65485f017a72ba41e946df
+    home: https://charts.wahoo.li
+    maintainers:
+    - name: wahooli
+      url: https://github.com/wahooli/
+    name: common
+    sources:
+    - https://github.com/wahooli/helm-charts
+    type: library
+    urls:
+    - https://github.com/wahooli/helm-charts/releases/download/common-0.0.1/common-0.0.1.tgz
+    version: 0.0.1
+  docker-mailserver:
+  - apiVersion: v2
+    appVersion: 13.3.1
+    created: "2024-06-28T15:43:40.590520173Z"
+    dependencies:
+    - name: common
+      repository: oci://ghcr.io/wahooli/charts
+      version: 0.0.1
+    description: docker-mailserver helm chart which is tested using ldap relay mode
+      only
+    digest: 626772b9d601a857ceb1f60d587b11dcd6f85aa91bd2f6143a997cd31518f0c5
+    icon: https://docker-mailserver.github.io/docker-mailserver/latest/assets/logo/dmo-logo.min.svg
+    maintainers:
+    - name: wahooli
+      url: https://github.com/wahooli/
+    name: docker-mailserver
+    sources:
+    - https://github.com/wahooli/helm-charts
+    type: application
+    urls:
+    - https://github.com/wahooli/helm-charts/releases/download/docker-mailserver-0.1.0/docker-mailserver-0.1.0.tgz
+    version: 0.1.0
+  jellyfin:
+  - apiVersion: v2
+    appVersion: 10.8.13
+    created: "2024-06-28T15:43:40.677478539Z"
+    dependencies:
+    - name: common
+      repository: oci://ghcr.io/wahooli/charts
+      version: 0.0.1
+    description: jellyfin helm chart using official docker image
+    digest: f837bd3a2b899ab3eb75a552691c115e481a1d386ce5e4a9bed430522e3160d8
+    icon: https://raw.githubusercontent.com/jellyfin/jellyfin-ux/master/branding/SVG/icon-transparent.svg
+    maintainers:
+    - name: wahooli
+      url: https://github.com/wahooli/
+    name: jellyfin
+    sources:
+    - https://github.com/wahooli/helm-charts
+    type: application
+    urls:
+    - https://github.com/wahooli/helm-charts/releases/download/jellyfin-0.1.0/jellyfin-0.1.0.tgz
+    version: 0.1.0
+  netbootxyz:
+  - apiVersion: v2
+    appVersion: 0.7.1-nbxyz1
+    created: "2024-06-28T15:43:40.805392483Z"
+    dependencies:
+    - name: common
+      repository: oci://ghcr.io/wahooli/charts
+      version: 0.0.1
+    description: netbootxyz helm chart using official ghcr.io image
+    digest: 076e31cb160201eaf59edc012c679d0007047912e331499b343cd3a83964fd42
+    icon: https://netboot.xyz/img/nbxyz-logo.svg
+    maintainers:
+    - name: wahooli
+      url: https://github.com/wahooli/
+    name: netbootxyz
+    sources:
+    - https://github.com/wahooli/helm-charts
+    type: application
+    urls:
+    - https://github.com/wahooli/helm-charts/releases/download/netbootxyz-0.1.0/netbootxyz-0.1.0.tgz
+    version: 0.1.0
+  ombi:
+  - apiVersion: v2
+    appVersion: 4.43.5
+    created: "2024-06-28T15:43:40.905541235Z"
+    dependencies:
+    - name: common
+      repository: oci://ghcr.io/wahooli/charts
+      version: 0.0.1
+    description: Ombi helm chart using linuxserver.io docker image
+    digest: b25f2c529016258c8176eae8eeb8ea30424ac6d992a385fb648a83565d672ea7
+    icon: https://ombi.io/img/logo-orange-small.png
+    maintainers:
+    - name: wahooli
+      url: https://github.com/wahooli/
+    name: ombi
+    sources:
+    - https://github.com/wahooli/helm-charts
+    type: application
+    urls:
+    - https://github.com/wahooli/helm-charts/releases/download/ombi-0.1.0/ombi-0.1.0.tgz
+    version: 0.1.0
+  openldap:
+  - apiVersion: v2
+    appVersion: 2.6.7
+    created: "2024-06-28T15:43:40.999039545Z"
+    dependencies:
+    - name: common
+      repository: oci://ghcr.io/wahooli/charts
+      version: 0.0.1
+    description: OpenLDAP helm chart using bitnami docker image
+    digest: 15adfb28f724b9e4db5c801c4037b1e7fcf5b56aea839eeb09049466156c4e11
+    icon: https://upload.wikimedia.org/wikipedia/en/c/c7/OpenLDAP-logo.png
+    maintainers:
+    - name: wahooli
+      url: https://github.com/wahooli/
+    name: openldap
+    sources:
+    - https://github.com/wahooli/helm-charts
+    type: application
+    urls:
+    - https://github.com/wahooli/helm-charts/releases/download/openldap-0.1.0/openldap-0.1.0.tgz
+    version: 0.1.0
+  overseerr:
+  - apiVersion: v2
+    appVersion: 1.33.2
+    created: "2024-06-28T15:43:41.096286572Z"
+    dependencies:
+    - name: common
+      repository: oci://ghcr.io/wahooli/charts
+      version: 0.0.1
+    description: overseerr helm chart using official ghcr.io image
+    digest: 118a8156edf783958e123e91340fbae55d119050b9623e9cd36421209fb41d8a
+    icon: https://raw.githubusercontent.com/sct/overseerr/develop/public/os_icon.svg
+    maintainers:
+    - name: wahooli
+      url: https://github.com/wahooli/
+    name: overseerr
+    sources:
+    - https://github.com/wahooli/helm-charts
+    type: application
+    urls:
+    - https://github.com/wahooli/helm-charts/releases/download/overseerr-0.1.0/overseerr-0.1.0.tgz
+    version: 0.1.0
+  paperless-ngx:
+  - apiVersion: v2
+    appVersion: 2.6.2
+    created: "2024-06-28T15:43:41.198978252Z"
+    dependencies:
+    - name: common
+      repository: oci://ghcr.io/wahooli/charts
+      version: 0.0.1
+    description: paperless-ngx helm chart using official docker image
+    digest: c71505a5e332e669978b42099e9b0f55f9688bb05f580df5d3dc3ebe0f06eae3
+    icon: https://raw.githubusercontent.com/paperless-ngx/paperless-ngx/gh-pages/assets/logo.svg
+    maintainers:
+    - name: wahooli
+      url: https://github.com/wahooli/
+    name: paperless-ngx
+    sources:
+    - https://github.com/wahooli/helm-charts
+    type: application
+    urls:
+    - https://github.com/wahooli/helm-charts/releases/download/paperless-ngx-0.1.0/paperless-ngx-0.1.0.tgz
+    version: 0.1.0
+  radarr:
+  - apiVersion: v2
+    appVersion: 5.3.6
+    created: "2024-06-28T15:43:41.306452062Z"
+    dependencies:
+    - name: common
+      repository: oci://ghcr.io/wahooli/charts
+      version: 0.0.1
+    description: radarr helm chart using linuxserver.io image
+    digest: 52721198ede48cce41949d412b13be02d8909b60ad672f62a35df40894c45cc0
+    icon: https://raw.githubusercontent.com/Radarr/Radarr/develop/Logo/Radarr.svg
+    maintainers:
+    - name: wahooli
+      url: https://github.com/wahooli/
+    name: radarr
+    sources:
+    - https://github.com/wahooli/helm-charts
+    type: application
+    urls:
+    - https://github.com/wahooli/helm-charts/releases/download/radarr-0.1.0/radarr-0.1.0.tgz
+    version: 0.1.0
+  sonarr:
+  - apiVersion: v2
+    appVersion: 4.0.3
+    created: "2024-06-28T15:43:41.391914854Z"
+    dependencies:
+    - name: common
+      repository: oci://ghcr.io/wahooli/charts
+      version: 0.0.1
+    description: sonarr helm chart using linuxserver image
+    digest: f786c8110cc409ad6260f790861c59217f462c0fc360967cf5d82637a13a5219
+    icon: https://raw.githubusercontent.com/Sonarr/Sonarr/develop/Logo/Sonarr.svg
+    maintainers:
+    - name: wahooli
+      url: https://github.com/wahooli/
+    name: sonarr
+    sources:
+    - https://github.com/wahooli/helm-charts
+    type: application
+    urls:
+    - https://github.com/wahooli/helm-charts/releases/download/sonarr-0.1.0/sonarr-0.1.0.tgz
+    version: 0.1.0
+  tautulli:
+  - apiVersion: v2
+    appVersion: 2.13.4
+    created: "2024-06-28T15:43:41.491591969Z"
+    dependencies:
+    - name: common
+      repository: oci://ghcr.io/wahooli/charts
+      version: 0.0.1
+    description: tautulli helm chart using linuxserver.io image
+    digest: 2f5e664b96362f2aadd1d65c7bd74b7328a6096c5cd6000bd6c93e3ac7a602c6
+    icon: https://tautulli.com/images/logo.svg
+    maintainers:
+    - name: wahooli
+      url: https://github.com/wahooli/
+    name: tautulli
+    sources:
+    - https://github.com/wahooli/helm-charts
+    type: application
+    urls:
+    - https://github.com/wahooli/helm-charts/releases/download/tautulli-0.1.0/tautulli-0.1.0.tgz
+    version: 0.1.0
+  vaultwarden:
+  - apiVersion: v2
+    appVersion: 1.30.5
+    created: "2024-06-28T15:43:41.594002461Z"
+    dependencies:
+    - name: common
+      repository: oci://ghcr.io/wahooli/charts
+      version: 0.0.1
+    description: vaultwarden helm chart using official ghcr.io image
+    digest: f7804458d2017a8fd1942b327be73139e8cf74210505f200dc7f412dc46fa007
+    icon: https://raw.githubusercontent.com/dani-garcia/vaultwarden/main/resources/vaultwarden-icon.svg
+    maintainers:
+    - name: wahooli
+      url: https://github.com/wahooli/
+    name: vaultwarden
+    sources:
+    - https://github.com/wahooli/helm-charts
+    type: application
+    urls:
+    - https://github.com/wahooli/helm-charts/releases/download/vaultwarden-0.1.0/vaultwarden-0.1.0.tgz
+    version: 0.1.0
+generated: "2024-06-28T15:43:41.594013131Z"
