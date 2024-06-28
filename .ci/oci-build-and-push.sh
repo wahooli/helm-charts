@@ -83,6 +83,15 @@ for CHART in "${CHARTS[@]}" ; do
         git add $yaml_file
         # yq ".version = \"${CHART_VERSION}\"" $yaml_file && \
         # git add $yaml_file
+        if [ "$CHART" != "common" ]; then
+            temp_file=$(mktemp)
+            yq ea "(.dependencies[] | select(.name == \"common\").repository) |= \"file://../common\"" $yaml_file > $temp_file
+            mv $temp_file $yaml_file
+
+            temp_file=$(mktemp)
+            yq ea "(.dependencies[] | select(.name == \"common\").version) |= \">0.0.0-0\"" $yaml_file > $temp_file
+            mv $temp_file $yaml_file
+        fi 
     fi
 
     if [ "${FORCE_PUSH,,}" == "false" ]; then
@@ -92,8 +101,8 @@ for CHART in "${CHARTS[@]}" ; do
     fi
 
     if [ "${ALLOW_PUSH,,}" == "true" ]; then
-        helm package "${CHARTS_BASE_DIR}/${CHART}" --destination output/ --dependency-update --version "${CHART_VERSION}"
-        helm push "output/${CHART}-${CHART_VERSION}.tgz" oci://${OCI_REGISTRY}/${GITHUB_ACTOR}/charts
+        helm package "${CHARTS_BASE_DIR}/${CHART}" --destination output/ --dependency-update --version "${CHART_VERSION}" || exit_error "1" "Failed to package chart" 
+        helm push "output/${CHART}-${CHART_VERSION}.tgz" oci://${OCI_REGISTRY}/${GITHUB_ACTOR}/charts || exit_error "1" "Failed to push chart"
     else
         echo "Skipping push, since chart \"${CHART}\" with version \"${CHART_VERSION}\" already exists."
     fi

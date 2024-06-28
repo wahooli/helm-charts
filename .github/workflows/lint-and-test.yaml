@@ -1,0 +1,112 @@
+name: Lint and Test Charts
+
+on:
+  workflow_dispatch:
+  # pull_request:
+  #   types:
+  #   - opened
+  #   - synchronize
+  #   - reopened
+  push:
+    branches:
+    - '*'
+    - '!gh-pages'
+    tags-ignore:
+    - '*'
+    paths-ignore:
+    - '.github/**'
+    - '.ci/**'
+    - '*.md'
+    - 'LICENSE'
+
+env:
+  INSTALL_IGNORE_CHARTS: common,cloudflare-tunnel,docker-mailserver,paperless-ngx
+
+jobs:
+  lint-test:
+    name: Lint and test
+    runs-on: helm-charts-runner-set
+    outputs:
+      charts: ${{ steps.list-changed.outputs.charts }}
+    steps:
+    - name: Install git, wget and curl
+      if: runner.environment == 'self-hosted'
+      run: |
+        sudo apt-get update -qqy
+        sudo apt-get install curl git wget -qqy --no-install-recommends
+    - name: Checkout
+      uses: actions/checkout@v4.1.7
+      with:
+        fetch-depth: 0
+    - name: Last successful build on main
+      if: github.event_name == 'push' && github.event.repository.default_branch == github.ref_name
+      id: last-commit-id
+      uses: SamhammerAG/last-successful-build-action@v6.2
+      with:
+        token: "${{ secrets.GITHUB_TOKEN }}"
+        branch: "main"
+        workflow: "Lint and Test Charts"
+        verify: true
+    - name: Set up Helm
+      uses: azure/setup-helm@v4.2.0
+      with:
+        version: v3.14.4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+        check-latest: true
+    - name: Set up chart-testing
+      uses: helm/chart-testing-action@v2.6.1
+    - name: Run chart-testing (list-changed)
+      id: list-changed
+      run: |
+        ARGS=""
+        CHARTS_OUT="[]"
+        if [[ "${{ github.event_name }}" == "push" ]]; then
+          ARGS="--target-branch ${{ github.event.repository.default_branch }}"
+          # if pushed to main
+          if [[ "${{ github.ref_name }}" == "${{ github.event.repository.default_branch }}" ]]; then
+            if [[  "${{ steps.last-commit-id.outputs.sha }}" != "${{ github.sha }}" ]]; then
+              ARGS+=" --since ${{ steps.last-commit-id.outputs.sha }}"
+            else
+              # cannot determine previous successful run on main, test all
+              ARGS="--all"
+              changed="yes"
+            fi
+          fi
+          [[ -z "$changed" ]] && changed=$(ct list-changed ${ARGS})
+          if [[ -n "$changed" ]]; then
+            # echo "changed: '$changed'"
+            CHARTS_OUT="["
+            for chart in $changed; do
+              CHARTS_OUT+=" \"${chart#charts/}\","
+            done
+            CHARTS_OUT="${CHARTS_OUT%,} ]"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+        else
+          # workflow dispatch, test all
+          ARGS="--all"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+        fi
+        echo "charts=${CHARTS_OUT}" >> "$GITHUB_OUTPUT"
+        echo "args=${ARGS}" >> "$GITHUB_OUTPUT"
+
+    - name: Run chart-testing (lint)
+      if: steps.list-changed.outputs.changed == 'true'
+      run: ct lint --check-version-increment=false ${{ steps.list-changed.outputs.args }}
+    - name: Create kind cluster
+      if: steps.list-changed.outputs.changed == 'true'
+      uses: helm/kind-action@v1.10.0
+    - name: Run chart-testing (install)
+      if: steps.list-changed.outputs.changed == 'true'
+      run: ct install ${{ steps.list-changed.outputs.args }} --excluded-charts ${{ env.INSTALL_IGNORE_CHARTS }}
+  oci-push:
+    if: github.event_name == 'push' && github.event.repository.default_branch == github.ref_name
+    name: Push prerelease versions
+    uses: ./.github/workflows/oci-build-and-push.yaml
+    needs: lint-test
+    with:
+      charts: "${{ needs.lint-test.outputs.charts }}"
+      build_prerelease: true
+    secrets: inherit

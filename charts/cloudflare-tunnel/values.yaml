@@ -71,11 +71,12 @@ securityContext:
   # runAsUser: 1000
 
 service:
-  create: false
-  ports:
-  - name: metrics
-    port: 2000
-    protocol: TCP
+  main:
+    create: false
+    ports:
+    - name: metrics
+      port: 2000
+      protocol: TCP
 
 probe:
   liveness:

@@ -57,17 +57,18 @@ securityContext: {}
   # runAsUser: 1000
 
 service:
-  type: ClusterIP
-  ports:
-  - name: smtp
-    port: 25
-    protocol: TCP
-  - name: submissions
-    port: 465
-    protocol: TCP
-  - name: submission
-    port: 587
-    protocol: TCP
+  main:
+    type: ClusterIP
+    ports:
+    - name: smtp
+      port: 25
+      protocol: TCP
+    - name: submissions
+      port: 465
+      protocol: TCP
+    - name: submission
+      port: 587
+      protocol: TCP
 
 probe:
   liveness:

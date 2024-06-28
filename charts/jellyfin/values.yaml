@@ -44,21 +44,22 @@ securityContext: {}
   # runAsUser: 1000
 
 service:
-  type: ClusterIP
-  ports:
-  - name: http
-    port: 8096
-    ingress: true
-    protocol: TCP
-  - name: https
-    port: 8920
-    protocol: TCP
-  - name: servicediscovery
-    port: 1900
-    protocol: UDP
-  - name: clientdiscovery
-    port: 7359
-    protocol: UDP
+  main:
+    type: ClusterIP
+    ports:
+    - name: http
+      port: 8096
+      ingress: true
+      protocol: TCP
+    - name: https
+      port: 8920
+      protocol: TCP
+    - name: servicediscovery
+      port: 1900
+      protocol: UDP
+    - name: clientdiscovery
+      port: 7359
+      protocol: UDP
 
 probe:
   liveness:

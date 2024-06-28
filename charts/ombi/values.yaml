@@ -46,12 +46,13 @@ securityContext: {}
   # runAsUser: 1000
 
 service:
-  type: ClusterIP
-  ports:
-  - name: http
-    port: 3579
-    ingress: true
-    protocol: TCP
+  main:
+    type: ClusterIP
+    ports:
+    - name: http
+      port: 3579
+      ingress: true
+      protocol: TCP
 
 probe:
   liveness:
