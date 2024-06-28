@@ -19,6 +19,7 @@ on:
     - '*.md'
     - 'cr.yaml'
     - 'LICENSE'
+    - 'CNAME'
 
 env:
   INSTALL_IGNORE_CHARTS: common,cloudflare-tunnel,docker-mailserver,paperless-ngx

@@ -15,6 +15,11 @@ function bump_prerelease_version() {
     fi
 }
 
+function bump_release_version() {
+    local version="${1%-*}"
+    echo "${version%.*}.$((${version##*.}+1))"
+}
+
 function get_chart_yaml() {
     local chart_dir="${CHARTS_BASE_DIR}/${1}"
     if [ ! -d $chart_dir ]; then
@@ -43,22 +48,20 @@ GITHUB_REPO=${GITHUB_REPO:-wahooli/helm-charts}
 OCI_REGISTRY=${OCI_REGISTRY:-ghcr.io}
 CHARTS=( $(yq --null-input e "${CHARTS}[]" 2> /dev/null )) || exit_error "1" "Malformed json: $charts_input"
 
-if [ "${BUILD_PRERELEASE,,}" == "true" ]; then
-    if ! command -v git &> /dev/null; then
-        echo "git: command not found!"
-        exit 1
-    fi
-    if [ ! -d ".git" ]; then
-        echo ".git directory not found!"
-        exit 1
-    fi
-    if [ -z "$(git config user.name)" ]; then
-        git config --global user.name "${GITHUB_ACTOR}"
-        git config --global user.email "${GITHUB_ACTOR_ID}+${GITHUB_ACTOR}@users.noreply.github.com"
+if ! command -v git &> /dev/null; then
+    echo "git: command not found!"
+    exit 1
+fi
+if [ ! -d ".git" ]; then
+    echo ".git directory not found!"
+    exit 1
+fi
+if [ -z "$(git config user.name)" ]; then
+    git config --global user.name "${GITHUB_ACTOR}[bot]"
+    git config --global user.email "${GITHUB_ACTOR_ID}+${GITHUB_ACTOR}[bot]@users.noreply.github.com"
 
-        if [ ! -z "$GITHUB_TOKEN" ]; then
-            git remote set-url --push origin https://${GITHUB_ACTOR}:${GITHUB_TOKEN}@github.com/${GITHUB_REPO}
-        fi
+    if [ ! -z "$GITHUB_TOKEN" ]; then
+        git remote set-url --push origin https://${GITHUB_ACTOR}:${GITHUB_TOKEN}@github.com/${GITHUB_REPO}
     fi
 fi
 
@@ -91,7 +94,12 @@ for CHART in "${CHARTS[@]}" ; do
             temp_file=$(mktemp)
             yq ea "(.dependencies[] | select(.name == \"common\").version) |= \">0.0.0-0\"" $yaml_file > $temp_file
             mv $temp_file $yaml_file
-        fi 
+        fi
+    else
+        CHART_VERSION="${CHART_VERSION%-*}"
+        temp_file=$(mktemp)
+        yq ea ".version = \"${CHART_VERSION}\"" $yaml_file > $temp_file
+        mv $temp_file $yaml_file
     fi
 
     if [ "${FORCE_PUSH,,}" == "false" ]; then
@@ -105,6 +113,14 @@ for CHART in "${CHARTS[@]}" ; do
         helm push "output/${CHART}-${CHART_VERSION}.tgz" oci://${OCI_REGISTRY}/${GITHUB_ACTOR}/charts || exit_error "1" "Failed to push chart"
     else
         echo "Skipping push, since chart \"${CHART}\" with version \"${CHART_VERSION}\" already exists."
+    fi
+
+    if [ "${BUILD_PRERELEASE,,}" == "false" ]; then
+        CHART_VERSION=$(bump_release_version "${CHART_VERSION}")
+        temp_file=$(mktemp)
+        yq ea ".version = \"${CHART_VERSION}\"" $yaml_file > $temp_file
+        mv $temp_file $yaml_file
+        git add $yaml_file
     fi
 done
 

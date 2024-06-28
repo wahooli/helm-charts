@@ -16,6 +16,10 @@ jobs:
       with:
         fetch-depth: 0
 
+    - name: Strip prerelease number from chart versions
+      shell: bash
+      run: .ci/strip-prerelease-version.sh
+
     - name: Configure Git
       run: |
         git config user.name "$GITHUB_ACTOR"
@@ -31,5 +35,15 @@ jobs:
       with:
         charts_dir: charts
         config: cr.yaml
+        skip_existing: true
+        pages_branch: gh-pages
       env:
         CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+
+  oci-push:
+    name: Push release versions
+    uses: ./.github/workflows/oci-build-and-push.yaml
+    needs: release
+    with:
+      build_prerelease: false
+    secrets: inherit
