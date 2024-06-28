@@ -17,6 +17,7 @@ on:
     - '.github/**'
     - '.ci/**'
     - '*.md'
+    - 'cr.yaml'
     - 'LICENSE'
 
 env:
