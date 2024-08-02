@@ -53,6 +53,8 @@ jobs:
       uses: azure/setup-helm@v4.2.0
       with:
         version: v3.14.4
+    - name: Add repo depends
+      run: helm repo add wahooli https://charts.wahoo.li
     - uses: actions/setup-python@v5
       with:
         python-version: '3.x'
