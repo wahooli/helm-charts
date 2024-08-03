@@ -115,6 +115,8 @@ persistence: {}
 ingress:
   main:
     enabled: false
+    targetSelector:
+      main: webui
     className: ""
     annotations: {}
       # kubernetes.io/ingress.class: nginx
