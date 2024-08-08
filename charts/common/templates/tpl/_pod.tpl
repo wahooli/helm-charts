@@ -52,6 +52,7 @@ spec:
     {{- include "common.tpl.ports.container" . | nindent 4 }}
     resources:
       {{- toYaml .Values.resources | nindent 6 }}
+  {{- include "common.tpl.sidecars" . | nindent 2 }}
   {{- with .Values.nodeSelector }}
   nodeSelector:
     {{- toYaml . | nindent 4 }}

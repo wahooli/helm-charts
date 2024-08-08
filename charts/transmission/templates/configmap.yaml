@@ -1,0 +1,16 @@
+{{- if and (.Values.wireguard).enabled (.Values.wireguard.config).data (not (.Values.wireguard.config).existingSecret) (not (.Values.wireguard.config).existingConfigMap) (not (.Values.wireguard.config).secretData) -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "transmission.wireguardConfigName" . }}
+  labels:
+    {{- include "common.helpers.labels" . | nindent 4 }}
+data:
+  {{- range $configFile, $content := (.Values.wireguard.config).data }}
+    {{- $configFile | nindent 2 }}: |-
+      {{- $content | nindent 4}}   
+  {{- end }}
+
+---
+{{- end }}
+{{ include "common.configMap" . }}

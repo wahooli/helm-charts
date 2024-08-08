@@ -1,0 +1,5 @@
+{{- $ctx := deepCopy . -}}
+{{- if (.Values.wireguard).enabled -}}
+  {{- $_ := include "transmission.wireguardSidecar" . | fromYaml | merge $ctx.Values -}}
+{{- end -}}
+{{ include "common.workload" $ctx }}
