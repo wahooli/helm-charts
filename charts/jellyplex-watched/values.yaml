@@ -1,0 +1,98 @@
+# Default values for openldap.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+workloadType: Deployment
+
+strategy:
+  type: RollingUpdate
+
+image:
+  repository: ghcr.io/luigi311/jellyplex-watched
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# see configuration example
+# https://raw.githubusercontent.com/luigi311/JellyPlex-Watched/main/.env.sample
+# env:
+#   DRYRUN: "True"
+#   DEBUG: "True"
+#   DEBUG_LEVEL: "info"
+#   RUN_ONLY_ONCE: "False"
+#   SLEEP_DURATION: "3600"
+#   LOGFILE: "/tmp/log.log"
+#   MARKFILE: "/tmp/mark.log"
+#   USER_MAPPING: |-
+#     {"user1":"user2"}
+#   LIBRARY_MAPPING: |-
+#     {"TV Shows":"Shows"}
+#   BLACKLIST_LIBRARY: ""
+#   WHITELIST_LIBRARY: ""
+#   BLACKLIST_LIBRARY_TYPE: ""
+#   WHITELIST_LIBRARY_TYPE: ""
+#   BLACKLIST_USERS: ""
+#   WHITELIST_USERS: ""
+#   PLEX_BASEURL: "https://localhost:32400"
+#   PLEX_TOKEN: "plex_token"
+#   JELLYFIN_BASEURL: "http://localhost:8096"
+#   JELLYFIN_TOKEN: "jelly_token"
+#   SSL_BYPASS: "True"
+#   SYNC_FROM_PLEX_TO_JELLYFIN: "True"
+#   SYNC_FROM_JELLYFIN_TO_PLEX: "True"
+#   SYNC_FROM_PLEX_TO_PLEX: "True"
+#   SYNC_FROM_JELLYFIN_TO_JELLYFIN: "True"
+
+serviceAccount:
+  create: false
+
+podAnnotations: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+# service: {}
+
+
+# probe:
+#   liveness: {}
+#   readiness: {}
+#   startup: {}
+
+# persistence: {}
+
+# ingress: {}
+
+autoscaling:
+  enabled: false
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
