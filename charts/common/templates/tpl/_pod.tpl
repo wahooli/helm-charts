@@ -32,7 +32,7 @@ spec:
     {{- toYaml .Values.podSecurityContext | nindent 4 }}
   {{- include "common.tpl.initContainers" . | nindent 2 }}
   containers:
-  - name: {{ .Chart.Name }}
+  - name: {{ include "common.helpers.names.container" . }}
     securityContext:
       {{- toYaml .Values.securityContext | nindent 6 }}
     image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
@@ -46,6 +46,10 @@ spec:
     {{- with .Values.args }}
     args:
       {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with .Values.lifecycle }}
+    lifecycle:
+      {{- toYaml . | nindent 6 }}
     {{- end }}
     {{- include "common.tpl.volumeMounts" . | nindent 4 -}}
     {{- include "common.tpl.probes" . | nindent 4 }}

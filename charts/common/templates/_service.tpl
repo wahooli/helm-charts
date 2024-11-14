@@ -5,20 +5,23 @@
     {{- $commonLabels := (include "common.helpers.labels" .) | fromYaml -}}
     {{- $selectorLabels := (include "common.helpers.labels.selectorLabels" .) | fromYaml -}}
     {{- $isSts := eq "StatefulSet" (include "common.helpers.names.workloadType" .) -}}
-
-    {{- range $name, $service := .Values.service -}}
+    {{- $services := .Values.service -}}
+    {{- range $name, $service := $services -}}
       {{- $createService := true -}}
       {{- if hasKey $service "enabled" -}}
         {{- $createService = $service.enabled -}}
-      {{- else if not (hasKey $service "ports") -}}
+      {{- else if and (not (hasKey $service "ports")) (not (hasKey $service "portsFrom"))  -}}
         {{- $createService = false -}}
       {{- end -}}
 
       {{- /* Creates headless service copy if is only "main" named service  */ -}}
       {{- $createHeadlessCopy := hasKey $service "createHeadless" | ternary $service.createHeadless (and $isSts (eq "main" $name)) -}}
 
-      {{- $serviceSpec := omit $service "createHeadless" "annotations" "name" "labels" "ports" "enabled" "isStsService" -}}
+      {{- $serviceSpec := omit $service "createHeadless" "annotations" "name" "labels" "ports" "enabled" "isStsService" "portsFrom" -}}
       {{- $servicePorts := $service.ports -}}
+      {{- if $service.portsFrom -}}
+        {{- $servicePorts = (index $services $service.portsFrom).ports -}}
+      {{- end -}}
       {{- if not (hasKey $serviceSpec "type") -}}
         {{- $serviceSpec = merge (dict "type" "ClusterIP") $serviceSpec -}}
       {{- end -}}
@@ -44,7 +47,7 @@ metadata:
   labels:
     {{- toYaml $serviceLabels | nindent 4 }}
 spec:
-  {{- include "common.tpl.ports.service" $service.ports | nindent 2 }}
+  {{- include "common.tpl.ports.service" $servicePorts | nindent 2 }}
   {{- toYaml $serviceSpec | nindent 2 }}
         {{- if $createHeadlessCopy }}
 ---

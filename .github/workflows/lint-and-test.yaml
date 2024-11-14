@@ -67,6 +67,10 @@ jobs:
         ARGS=""
         CHARTS_OUT="[]"
         if [[ "${{ github.event_name }}" == "push" ]]; then
+          # do soft reset to previous commit, if it starts with [no ci]
+          if git log -2 --pretty=%B | grep -q "^\\[no ci\\]"; then
+            git reset --soft HEAD^
+          fi
           ARGS="--target-branch ${{ github.event.repository.default_branch }}"
           # if pushed to main
           if [[ "${{ github.ref_name }}" == "${{ github.event.repository.default_branch }}" ]]; then

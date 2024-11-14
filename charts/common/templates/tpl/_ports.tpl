@@ -12,14 +12,20 @@
       {{- if $serviceEnabled -}}
         {{- range $_, $port := $service.ports -}}
           {{- $portName := $port.name | trunc 15 | trimAll "-" -}}
-          {{- if has $portName $portNames -}}
-            {{- fail (printf "port name '%s' has been already declared!" $portName) -}}
+          {{- $portEnabled := true -}}
+          {{- if hasKey $port "enabled" -}}
+            {{- $portEnabled = $port.enabled -}}
           {{- end -}}
-          {{- $portNames = append $portNames $portName -}}
+          {{- if $portEnabled -}}
+            {{- if has $portName $portNames -}}
+              {{- fail (printf "port name '%s' has been already declared!" $portName) -}}
+            {{- end -}}
+            {{- $portNames = append $portNames $portName -}}
 
-          {{- $containerPort := $port.containerPort | default $port.port -}}
-          {{- $protocol := $port.protocol | default "TCP" -}}
-          {{- $ports = append $ports (dict "name" $portName "containerPort" $containerPort "protocol" $protocol) -}}
+            {{- $containerPort := $port.containerPort | default $port.port -}}
+            {{- $protocol := $port.protocol | default "TCP" -}}
+            {{- $ports = append $ports (dict "name" $portName "containerPort" $containerPort "protocol" $protocol) -}}
+          {{- end -}}
         {{- end -}}
       {{- end -}}
     {{- end -}}
@@ -37,11 +43,17 @@ usage:
 {{- define "common.tpl.ports.service" -}}
   {{- if . -}}
 ports:
-    {{- range $_, $port := . }}
+    {{- range $_, $port := . -}}
+      {{- $portEnabled := true -}}
+      {{- if hasKey $port "enabled" -}}
+        {{- $portEnabled = $port.enabled -}}
+      {{- end -}}
+      {{- if $portEnabled }}
 - name: {{ $port.name | trunc 15 | trimAll "-" }}
   targetPort: {{ $port.containerPort | default ($port.name | trunc 15 | trimAll "-") }}
   port: {{ $port.port }}
   protocol: {{ $port.protocol | default "TCP" }}
+      {{- end -}}
     {{- end -}}
   {{- end -}}
 {{- end }}

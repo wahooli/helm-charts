@@ -24,6 +24,13 @@ Expand the name of the chart.
 {{- end }}
 
 {{/*
+Expand the name of the chart.
+*/}}
+{{- define "common.helpers.names.container" -}}
+  {{- default .Chart.Name .Values.containerName -}}
+{{- end }}
+
+{{/*
 Create chart name and version as used by the chart label.
 */}}
 {{- define "common.helpers.names.chart" -}}
@@ -65,6 +72,8 @@ Create chart name and version as used by the chart label.
       {{- print "Deployment" -}}
     {{- else if eq (lower .Values.workloadType) "statefulset"  -}}
       {{- print "StatefulSet" -}}
+    {{- else if eq (lower .Values.workloadType) "daemonset"  -}}
+      {{- print "DaemonSet" -}}
     {{- else -}}
       {{- fail (printf "Not a valid workloadType (%s)" .Values.workloadType) -}}
     {{- end -}}
