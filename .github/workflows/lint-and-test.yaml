@@ -68,8 +68,16 @@ jobs:
         CHARTS_OUT="[]"
         if [[ "${{ github.event_name }}" == "push" ]]; then
           # do soft reset to previous commit, if it starts with [no ci]
+          # stash current changes and remove previous commit
+          # pop changes and make temp commit. changes are not pushed to remote
           if git log -2 --pretty=%B | grep -q "^\\[no ci\\]"; then
+            git config --global user.name "${GITHUB_ACTOR}[bot]"
+            git config --global user.email "${GITHUB_ACTOR_ID}+${GITHUB_ACTOR}[bot]@users.noreply.github.com"
             git reset --soft HEAD^
+            git stash
+            git reset --hard HEAD^
+            git stash pop
+            git commit -m "temp commit"
           fi
           ARGS="--target-branch ${{ github.event.repository.default_branch }}"
           # if pushed to main

@@ -1,0 +1,3 @@
+{{- $ctx := deepCopy . -}}
+{{- $_ := include "bind9.workloadValues" . | fromYaml | merge $ctx.Values -}}
+{{ include "common.workload" $ctx }}

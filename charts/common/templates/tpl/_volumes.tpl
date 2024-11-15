@@ -60,7 +60,20 @@ usage:
       {{- end -}}
       {{- $spec = merge (dict "configMap" (dict "name" $configMapName ) ) $spec -}}
     {{- else if and $spec.secret -}}
-      {{- $secretName := include "common.helpers.names.secretName" ( list .root $spec.secret.name $useFromChart ) -}}
+      {{- $secretName := $spec.secret.secretName | default $spec.secret.name -}} 
+      {{- /* remove "name" key from $spec.secret */ -}}
+      {{- if $spec.secret.name -}}
+        {{- $spec = omit $spec "secret" -}}
+        {{- $newSecret := dict -}}
+        {{- range $key, $value := $spec.secret -}}
+          {{- if ne $key "name" }}
+            {{- $_ := set $newSecret $key $value -}}
+          {{- end -}}
+        {{- end -}}
+        {{- $spec = merge $spec (dict "secret" $newSecret ) $spec -}}
+      {{- end -}}
+
+      {{- $secretName = include "common.helpers.names.secretName" ( list .root $secretName $useFromChart ) -}}
       {{- /*
         Run tpl against chart secret name if useFromChart is false
       */ -}}
