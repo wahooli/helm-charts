@@ -1,0 +1,3 @@
+{{- $ctx := deepCopy . -}}
+{{- $_ := include "unbound.workloadValues" $ctx | fromYaml | merge $ctx.Values -}}
+{{ include "common.notes" $ctx }}

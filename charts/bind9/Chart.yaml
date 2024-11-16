@@ -27,5 +27,5 @@ sources:
   - https://github.com/wahooli/helm-charts
 dependencies:
   - name: common
-    repository: "file://../common"
-    version: ">0.0.2-1"
+    repository: "oci://ghcr.io/wahooli/charts"
+    version: ">=0.0.2-7"

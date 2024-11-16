@@ -1,6 +1,6 @@
 apiVersion: v2
-name: blocky
-description: blocky helm chart using 0xERR0R ghcr.io docker image
+name: unbound
+description: unbound helm chart using madnuttah image with redis sidecar support
 # A chart can be either an 'application' or a 'library' chart.
 #
 # Application charts are a collection of templates that can be packaged into versioned archives
@@ -13,8 +13,8 @@ type: application
 # This is the chart version. This version number should be incremented each time you make changes
 # to the chart and its templates, including the app version.
 # Versions are expected to follow Semantic Versioning (https://semver.org/)
-version: 0.1.0-1
-icon: "https://raw.githubusercontent.com/0xERR0R/blocky/refs/heads/main/docs/blocky.svg"
+version: 0.1.0-0
+icon: "https://nlnetlabs.nl/static/logos/Unbound/Unbound_FC_Shaded_cropped.svg"
 maintainers:
   - name: wahooli
     url: https://github.com/wahooli/
@@ -22,10 +22,14 @@ maintainers:
 # incremented each time you make changes to the application. Versions are not expected to
 # follow Semantic Versioning. They should reflect the version the application is using.
 # It is recommended to use it with quotes.
-appVersion: "v0.24"
+appVersion: "1.21.0-0"
 sources:
   - https://github.com/wahooli/helm-charts
 dependencies:
   - name: common
     repository: "oci://ghcr.io/wahooli/charts"
     version: ">=0.0.2-7"
+  - name: redis
+    version: 18.6.1
+    repository: oci://registry-1.docker.io/bitnamicharts
+    condition: redis.enabled

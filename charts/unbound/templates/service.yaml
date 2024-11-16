@@ -1,0 +1,3 @@
+{{- $ctx := deepCopy . -}}
+{{- $_ := include "unbound.serviceValues" $ctx | fromYaml | merge $ctx.Values -}}
+{{ include "common.service" $ctx }}

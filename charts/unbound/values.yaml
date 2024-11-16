@@ -1,0 +1,248 @@
+# Default values for unbound.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+workloadType: Deployment
+
+unbound:
+  port: 53
+  # redis:
+  #   host: redishost-override
+  #   port: 6379
+  zones:
+    volumeName: unbound-zones
+    # if true and secretData or data is defined, will add default zones into configmap/secret.
+    # won't add them into existing configmap/secret
+    # if existingSecret, existingConfigMap, secretData and data are undefined, default zones are included
+    include_default: false
+  #   mountPath: /usr/local/unbound/zones.d
+  #   existingSecret: unbound-zones-configmap
+  #   existingConfigMap: unbound-zones-secret
+  #   secretData:
+  #     zone1.conf: |-
+  #       config
+  #       config
+  #       config
+  #     zone2.conf: config
+  #   data:
+  #     zone3.conf: |-
+  #       config
+  #       config
+  #       config
+  #     zone4.conf: config
+  unboundConf:
+    volumeName: unbound-conf
+    # existingSecret: unboundconf-secret
+    # existingConfigMap: unboundconf-configMap
+    # override: |-
+    #   include: "/usr/local/unbound/conf.d/*.conf"
+    #   include: "/usr/local/unbound/zones.d/*.conf"
+    #
+    #   server:
+    #     module-config: "validator iterator"
+    #     directory: "/usr/local/unbound"
+    #     do-daemonize: no
+    #     tls-cert-bundle: /etc/ssl/certs/ca-certificates.crt
+  config:
+    volumeName: unbound-config
+  #   mountPath: /usr/local/unbound/conf.d
+  #   existingSecret: unbound-configmap
+  #   existingConfigMap: unbound-secret
+  #   secretData:
+  #     config.conf: |-
+  #       config
+  #       config
+  #       config
+  #     something.conf: config
+  #   data:
+  #     something_else.conf: |-
+  #       config
+  #       config
+  #       config
+  #     config2.conf: config
+
+# bitnami chart for redis
+redis:
+  enabled: false
+  architecture: standalone
+  auth:
+    enabled: false
+
+redisSidecar:
+  enabled: false
+  image:
+    repository: redis
+    tag: "7.4.0-alpine"
+    pullPolicy: IfNotPresent
+  # port: 6379 # setting the port disables unix socket datapath between unbound
+  # data:
+  #   volumeName: redis-data
+  #   mountPath: /data
+  #   spec:
+  #     isPersistentVolumeClaim: true
+  #     accessModes:
+  #     - "ReadWriteOnce"
+  #     resources:
+  #       requests:
+  #         storage: "5Gi"
+  # config:
+  #   volumeName: redis-config
+  #   mountPath: /usr/local/etc/redis
+  #   existingSecret: redis-configmap
+  #   existingConfigMap: redis-secret
+  #   secretData:
+  #     something.conf: |-
+  #       config
+  #       config
+  #       config
+  #     something_else2.conf: config
+  #   data:
+  #     something_else.conf: |-
+  #       config
+  #       config
+  #       config
+  #     something1.conf: config
+
+# sidecars: {}
+image:
+  repository: madnuttah/unbound
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+
+hostname: unbound
+# subdomain: localdomain
+hostNetwork: false
+# dnsPolicy: "ClusterFirstWithHostNet"
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+service:
+  main:
+    type: ClusterIP
+    ports:
+    - name: dns-udp
+      port: 53
+      protocol: UDP
+    - name: dns-tcp
+      port: 53
+      protocol: TCP
+    - name: https
+      port: 443
+      protocol: TCP
+
+probe:
+  startup:
+    enabled: true
+    initialDelaySeconds: 0
+    periodSeconds: 3
+    timeoutSeconds: 5
+    successThreshold: 1
+    failureThreshold: 20
+    exec:
+      command:
+      - /usr/local/unbound/sbin/healthcheck.sh
+      # command:
+      # - sh
+      # - -c
+      # - "test -S /usr/local/unbound/cachedb.d/redis.sock"
+  liveness:
+    enabled: true
+    initialDelaySeconds: 5
+    periodSeconds: 60
+    timeoutSeconds: 15
+    successThreshold: 1
+    failureThreshold: 10
+    exec:
+      command:
+      - /usr/local/unbound/sbin/healthcheck.sh
+  readiness:
+    enabled: true
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 1
+    successThreshold: 1
+    failureThreshold: 10
+    tcpSocket:
+      port: dns-udp
+
+persistence: {}
+# persistence:
+#   tls-cert:
+#     enabled: true
+#     mount:
+#     - path: /usr/local/unbound/certs.d/tls/
+#     spec:
+#       useFromChart: false
+#       secret:
+#         name: unbound-tls-cert
+#         defaultMode: 0444
+ingress:
+  main:
+    enabled: false
+    targetSelector:
+      main: https
+    className: ""
+    annotations: {}
+      # kubernetes.io/ingress.class: nginx
+      # kubernetes.io/tls-acme: "true"
+    hosts:
+      - host: chart-example.local
+        paths:
+          - path: /dns-query
+            pathType: ImplementationSpecific
+        # servicePort: 443
+        # serviceName: otherService
+    tls: []
+    #  - secretName: chart-example-tls
+    #    hosts:
+    #      - chart-example.local
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

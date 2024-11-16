@@ -1,0 +1,3 @@
+{{- $ctx := deepCopy . -}}
+{{- $_ := include "unbound.configMapValues" . | fromYaml | merge $ctx.Values -}}
+{{ include "common.configMap" $ctx }}
