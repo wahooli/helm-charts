@@ -1,16 +1,2 @@
 unbound:
   port: 5353
-
-service:
-  main:
-    type: ClusterIP
-    ports:
-    - name: dns-udp
-      port: 5353
-      protocol: UDP
-    - name: dns-tcp
-      port: 5353
-      protocol: TCP
-    - name: https
-      port: 8443
-      protocol: TCP

@@ -118,6 +118,9 @@ service:
     - name: dns-tcp
       port: {{ .Values.unbound.port | default 53 }}
       protocol: TCP
+    - name: https
+      port: 443
+      protocol: TCP
 {{- end -}}
 
 {{- define "unbound.workloadValues" -}}

@@ -145,16 +145,16 @@ securityContext: {}
 service:
   main:
     type: ClusterIP
-    ports:
-    - name: dns-udp
-      port: 53
-      protocol: UDP
-    - name: dns-tcp
-      port: 53
-      protocol: TCP
-    - name: https
-      port: 443
-      protocol: TCP
+    # ports:
+    # - name: dns-udp
+    #   port: 53
+    #   protocol: UDP
+    # - name: dns-tcp
+    #   port: 53
+    #   protocol: TCP
+    # - name: https
+    #   port: 443
+    #   protocol: TCP
 
 probe:
   startup:
