@@ -74,7 +74,7 @@ securityContext: {}
   # readOnlyRootFilesystem: true
   # runAsNonRoot: true
   # runAsUser: 1000
-
+workingDir: /var/cache/bind
 service:
   main:
     type: ClusterIP

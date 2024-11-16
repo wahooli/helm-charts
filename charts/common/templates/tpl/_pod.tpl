@@ -39,6 +39,9 @@ spec:
     imagePullPolicy: {{ .Values.image.pullPolicy }}
     {{- include "common.tpl.env" . | nindent 4 -}}
     {{- include "common.tpl.env.envFrom" . | nindent 4 -}}
+    {{- with .Values.workingDir }}
+    workingDir: {{ . }}
+    {{- end }}
     {{- with .Values.command }}
     command:
       {{- toYaml . | nindent 4 }}
