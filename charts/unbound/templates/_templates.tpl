@@ -7,7 +7,7 @@ include: "/usr/local/unbound/zones.d/*.conf"
 
 server:
   interface: 0.0.0.0@{{ .Values.unbound.port | default "53" }}
-  module-config: "validator {{ if .Values.redisSidecar.enabled }}cachedb {{ end }}iterator"
+  module-config: "validator {{ if or (.Values.redisSidecar).enabled (.Values.redis).enabled (.Values.unbound.redis).host }}cachedb {{ end }}iterator"
   directory: "/usr/local/unbound"
   do-daemonize: no
   chroot: ""
