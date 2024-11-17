@@ -28,7 +28,7 @@ sources:
 dependencies:
   - name: common
     repository: "oci://ghcr.io/wahooli/charts"
-    version: ">=0.0.2-8"
+    version: ">=0.0.2-9"
   - name: redis
     version: 18.6.1
     repository: oci://registry-1.docker.io/bitnamicharts
