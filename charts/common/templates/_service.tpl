@@ -25,7 +25,9 @@
       {{- if not (hasKey $serviceSpec "type") -}}
         {{- $serviceSpec = merge (dict "type" "ClusterIP") $serviceSpec -}}
       {{- end -}}
-
+      {{- if and (ne $serviceSpec.type "LoadBalancer") (ne $serviceSpec.type "NodePort") -}}
+        {{- $serviceSpec = omit $serviceSpec "externalTrafficPolicy" -}}
+      {{- end -}}
       {{- $serviceLabels := merge $commonLabels ($service.labels | default dict) -}}
 
       {{- $serviceSpec = merge (dict "selector" $selectorLabels) $serviceSpec -}}
