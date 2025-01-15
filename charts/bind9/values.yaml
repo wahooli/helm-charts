@@ -5,9 +5,6 @@
 replicaCount: 1
 workloadType: Deployment
 
-# strategy:
-#   type: RollingUpdate
-
 image:
   repository: internetsystemsconsortium/bind9
   pullPolicy: IfNotPresent
