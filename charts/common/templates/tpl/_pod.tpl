@@ -19,6 +19,8 @@ spec:
   {{- end }}
   serviceAccountName: {{ include "common.helpers.names.serviceAccount" . }}
   dnsPolicy: {{ .Values.dnsPolicy | default "ClusterFirst" }}
+  dnsConfig:
+    {{- toYaml (.Values.dnsConfig | default dict) | nindent 4 }}
   {{- with .Values.hostname }}
   hostname: {{ toYaml . }}
   {{- end }}

@@ -23,3 +23,12 @@ Usage:
     {{- end -}}
   {{- end -}}
 {{- end }}
+
+{{- define "common.helpers.persistence.hasReadWriteOncePodVolumeClaims" -}}
+  {{- range $volumeName, $persistence := .Values.persistence -}}
+    {{- if and (hasKey (($persistence).spec) "accessModes") (has "ReadWriteOncePod" $persistence.spec.accessModes) -}}
+      {{- print "true" -}}
+      {{- break -}}
+    {{- end -}}
+  {{- end -}}
+{{- end }}

@@ -1,14 +1,15 @@
 {{- define "common.tpl.strategy" -}}
   {{- $workloadType := include "common.helpers.names.workloadType" . -}}
-  {{- $hasPersistentVolumeClaims := false -}}
-  {{- if (include "common.helpers.persistence.hasPersistentVolumeClaims" .) -}}
-    {{- $hasPersistentVolumeClaims = true -}}
+  {{- $hasReadWriteOncePodVolumeClaims := false -}}
+  {{- $isHostNetwork := (.Values).hostNetwork | default false -}}
+  {{- if (include "common.helpers.persistence.hasReadWriteOncePodVolumeClaims" .) -}}
+    {{- $hasReadWriteOncePodVolumeClaims = true -}}
   {{- end -}}
   {{- if ne "Deployment" $workloadType -}}
     {{- include "common.tpl.strategy.updateStrategy" . -}}
   {{- else }}
 strategy:
-    {{- include "common.tpl.strategy.spec" (list .Values.strategy $workloadType $hasPersistentVolumeClaims) | nindent 2 }}
+    {{- include "common.tpl.strategy.spec" (list .Values.strategy $workloadType $hasReadWriteOncePodVolumeClaims $isHostNetwork) | nindent 2 }}
   {{- end -}}
 {{- end }}
 
@@ -30,16 +31,20 @@ usage: {{ include "common.tpl.strategy.spec" ( list .Values.path.to.strategy/upd
 {{- define "common.tpl.strategy.spec" -}}
   {{- $spec := index . 0 | default dict -}}
   {{- $workloadType := index . 1 -}}
-  {{- $hasPersistentVolumeClaims := index . 2 -}}
+  {{- $hasReadWriteOncePodVolumeClaims := index . 2 -}}
+  {{- $isHostNetwork := index . 3 -}}
   {{- $forceType := ($spec).forceType | default false -}}
   {{- $spec = omit $spec "forceType" -}}
   {{- /* set default spec.type if not defined */ -}}
   {{- if not ($spec).type -}}
-    {{- $spec = merge $spec (dict "type" (ternary "Recreate" "RollingUpdate" (and (eq "Deployment" $workloadType) $hasPersistentVolumeClaims))) -}}
+    {{- $spec = merge $spec (dict "type" (ternary "Recreate" "RollingUpdate" (and (eq "Deployment" $workloadType) (or $hasReadWriteOncePodVolumeClaims $isHostNetwork)))) -}}
   {{- else if not $forceType -}}
     {{- if eq "Deployment" $workloadType -}}
-      {{- if and $hasPersistentVolumeClaims (ne "Recreate" $spec.type) -}}
-        {{- fail "Recreate is recommended strategy for Deployments with persistent volumes. You can override this warning by setting .Values.strategy.forceType to true" -}}
+      {{- if and $hasReadWriteOncePodVolumeClaims (ne "Recreate" $spec.type) -}}
+        {{- fail "Recreate is recommended strategy for Deployments with persistent volumes having ReadWriteOncePod accessMode. You can override this warning by setting .Values.strategy.forceType to true" -}}
+      {{- else if and $isHostNetwork (ne "Recreate" $spec.type) -}}
+        {{- /* this is more likely of an issue having single replica and assigning the pod to the same node as previously it existed */ -}}
+        {{- fail "Recreate is recommended strategy for Deployments using hostNetwork. You can override this warning by setting .Values.strategy.forceType to true" -}}
       {{- else if and (ne "RollingUpdate" $spec.type) (ne "Recreate" $spec.type) -}}
         {{- fail (printf "Unknown stategy type for %s (%s). You can override this warning by setting .Values.strategy.forceType to true" $workloadType $spec.type) -}}
       {{- end -}}

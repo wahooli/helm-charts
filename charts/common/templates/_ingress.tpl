@@ -74,6 +74,10 @@ spec:
   {{- if and $ingress.className (semverCompare ">=1.18-0" $kubeVersion) }}
   ingressClassName: {{ $ingress.className }}
   {{- end }}
+  {{- with $ingress.defaultBackend }}
+  defaultBackend:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   {{- if $ingress.tls }}
   tls:
     {{- range $ingress.tls }}
