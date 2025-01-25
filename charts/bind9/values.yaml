@@ -102,6 +102,7 @@ probe:
     successThreshold: 1
     failureThreshold: 10
     tcpSocket:
+      default: true
       port: dns-udp
 
   readiness:
@@ -112,6 +113,7 @@ probe:
     successThreshold: 1
     failureThreshold: 10
     tcpSocket:
+      default: true
       port: dns-udp
 
   startup:
@@ -122,6 +124,7 @@ probe:
     successThreshold: 1
     failureThreshold: 10
     exec:
+      default: true
       command:
       - named-checkconf
       - /etc/bind/named.conf

@@ -61,23 +61,25 @@ service:
 probe:
   liveness:
     enabled: true
-    initialDelaySeconds: 20
+    initialDelaySeconds: 5
     periodSeconds: 10
     timeoutSeconds: 1
     successThreshold: 1
     failureThreshold: 10
     httpGet:
+      default: true
       path: /alive
       port: http
 
   readiness:
     enabled: true
-    initialDelaySeconds: 20
+    initialDelaySeconds: 0
     periodSeconds: 10
     timeoutSeconds: 1
     successThreshold: 1
     failureThreshold: 10
     httpGet:
+      default: true
       path: /alive
       port: http
 
@@ -89,6 +91,7 @@ probe:
     successThreshold: 1
     failureThreshold: 30
     httpGet:
+      default: true
       path: /alive
       port: http
 

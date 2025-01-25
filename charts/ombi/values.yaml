@@ -57,21 +57,23 @@ service:
 probe:
   liveness:
     enabled: true
-    initialDelaySeconds: 20
+    initialDelaySeconds: 10
     periodSeconds: 10
     timeoutSeconds: 1
     successThreshold: 1
     failureThreshold: 10
     tcpSocket:
+      default: true
       port: http
   readiness:
     enabled: true
-    initialDelaySeconds: 20
+    initialDelaySeconds: 0
     periodSeconds: 10
     timeoutSeconds: 1
     successThreshold: 1
     failureThreshold: 10
     tcpSocket:
+      default: true
       port: http
   startup:
     enabled: true
@@ -81,6 +83,7 @@ probe:
     successThreshold: 1
     failureThreshold: 30
     tcpSocket:
+      default: true
       port: http
 
 persistence: {}

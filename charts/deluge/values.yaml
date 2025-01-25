@@ -71,6 +71,7 @@ probe:
     successThreshold: 1
     failureThreshold: 10
     tcpSocket:
+      default: true
       port: webui
 
   readiness:
@@ -81,6 +82,7 @@ probe:
     successThreshold: 1
     failureThreshold: 10
     tcpSocket:
+      default: true
       port: webui
 
   startup:
@@ -91,6 +93,7 @@ probe:
     successThreshold: 1
     failureThreshold: 30
     tcpSocket:
+      default: true
       port: webui
 
 persistence: {}

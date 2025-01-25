@@ -64,6 +64,7 @@ probe:
     successThreshold: 1
     failureThreshold: 10
     tcpSocket:
+      default: true
       port: http
 
   readiness:
@@ -74,6 +75,7 @@ probe:
     successThreshold: 1
     failureThreshold: 10
     tcpSocket:
+      default: true
       port: http
 
   startup:
@@ -84,6 +86,7 @@ probe:
     successThreshold: 1
     failureThreshold: 30
     tcpSocket:
+      default: true
       port: http
 
 persistence: {}

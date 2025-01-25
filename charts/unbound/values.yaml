@@ -165,6 +165,7 @@ probe:
     successThreshold: 1
     failureThreshold: 20
     exec:
+      default: true
       command:
       - /usr/local/unbound/sbin/healthcheck.sh
       # command:
@@ -173,12 +174,13 @@ probe:
       # - "test -S /usr/local/unbound/cachedb.d/redis.sock"
   liveness:
     enabled: true
-    initialDelaySeconds: 5
+    initialDelaySeconds: 6
     periodSeconds: 60
     timeoutSeconds: 15
     successThreshold: 1
     failureThreshold: 10
     exec:
+      default: true
       command:
       - /usr/local/unbound/sbin/healthcheck.sh
   readiness:
@@ -189,6 +191,7 @@ probe:
     successThreshold: 1
     failureThreshold: 10
     tcpSocket:
+      default: true
       port: dns-udp
 
 persistence: {}

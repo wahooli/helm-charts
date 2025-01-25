@@ -81,13 +81,24 @@ service:
 probe:
   liveness:
     enabled: true
-    initialDelaySeconds: 10
+    initialDelaySeconds: 2
     periodSeconds: 10
     timeoutSeconds: 1
     successThreshold: 1
     failureThreshold: 10
     httpGet:
+      default: true
       path: /ready
+      port: metrics
+  readiness:
+    enabled: true
+    initialDelaySeconds: 0
+    periodSeconds: 10
+    timeoutSeconds: 1
+    successThreshold: 1
+    failureThreshold: 10
+    tcpSocket:
+      default: true
       port: metrics
 
 persistence:

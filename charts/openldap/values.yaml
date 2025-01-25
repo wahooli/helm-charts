@@ -55,22 +55,24 @@ service:
 probe:
   liveness:
     enabled: true
-    initialDelaySeconds: 20
+    initialDelaySeconds: 5
     periodSeconds: 10
     timeoutSeconds: 1
     successThreshold: 1
     failureThreshold: 10
     exec:
+      default: true
       command:
       - /scripts/livenessCheck.sh
   readiness:
     enabled: true
-    initialDelaySeconds: 20
+    initialDelaySeconds: 0
     periodSeconds: 10
     timeoutSeconds: 1
     successThreshold: 1
     failureThreshold: 10
     exec:
+      default: true
       command:
       - /scripts/livenessCheck.sh
   startup:
@@ -81,6 +83,7 @@ probe:
     successThreshold: 1
     failureThreshold: 30
     exec:
+      default: true
       command:
       - /scripts/livenessCheck.sh
 

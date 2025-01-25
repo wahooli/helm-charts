@@ -73,24 +73,26 @@ service:
 probe:
   liveness:
     enabled: true
-    initialDelaySeconds: 20
+    initialDelaySeconds: 6
     periodSeconds: 10
-    timeoutSeconds: 1
+    timeoutSeconds: 5
     successThreshold: 1
     failureThreshold: 10
     exec:
+      default: true
       command:
         - /bin/bash
         - -c
         - supervisorctl status | grep -E "amavis|clamav|cron|dovecot|mailserver|opendkim|opendmarc|postfix|rsyslog" | grep RUNNING
   readiness:
     enabled: true
-    initialDelaySeconds: 20
+    initialDelaySeconds: 0
     periodSeconds: 10
-    timeoutSeconds: 1
+    timeoutSeconds: 5
     successThreshold: 1
     failureThreshold: 10
     exec:
+      default: true
       command:
         - /bin/bash
         - -c
@@ -103,6 +105,7 @@ probe:
     successThreshold: 1
     failureThreshold: 30
     exec:
+      default: true
       command:
         - /bin/bash
         - -c
