@@ -1,1 +1,4 @@
-{{ include "common.workload" . }}
+{{- $ctx := deepCopy . -}}
+{{- $_ := unset $ctx.Values "configMaps" -}}
+{{- $_ := include "radarr.workloadValues" . | fromYaml | merge $ctx.Values -}}
+{{ include "common.workload" $ctx }}
