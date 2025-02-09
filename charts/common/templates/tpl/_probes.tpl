@@ -1,5 +1,6 @@
 {{- define "common.tpl.probes" -}}
-  {{- range $probeType, $probe := .Values.probe -}}
+  {{- $probes := (.Values).probe | default .probe -}}
+  {{- range $probeType, $probe := $probes -}}
     {{- $failureThresholdDefault := eq "startup" ($probeType | lower) | ternary 30 10 -}}
     {{- $successThreshold := eq "readiness" ($probeType | lower) | ternary $probe.successThreshold 1 -}}
     {{- $probeEnabled := hasKey $probe "enabled" | ternary $probe.enabled true }}

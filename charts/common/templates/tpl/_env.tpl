@@ -1,6 +1,7 @@
 {{- define "common.tpl.env" -}}
+  {{- $envVals := (.Values).env | default .env -}}
   {{- $envs := list -}}
-  {{- range $name, $env := .Values.env -}}
+  {{- range $name, $env := $envVals | default dict -}}
     {{- if kindIs "map" $env -}}
       {{- $envs = append $envs (merge (dict "name" $name) $env) -}}
     {{- else -}}
@@ -9,21 +10,27 @@
   {{- end -}}
   {{- if $envs -}}
 env:
-{{ toYaml $envs }}
-  {{- end }}
+{{ toYaml $envs -}}
+  {{- end -}}
 {{- end }}
 
+{{/*
+usage: {{ include "common.tpl.env.envFrom" (list $ .) }}
+*/}}
 {{- define "common.tpl.env.envFrom" -}}
+  {{- $root := index . 0 -}}
+  {{- $context := index . 1 -}}
+  {{- $envsFromVals := (($context).Values).envFrom | default $context.envFrom -}}
   {{- $envsFrom := list -}}
-  {{- range $name, $envFrom := .Values.envFrom -}}
+  {{- range $name, $envFrom := $envsFromVals | default dict -}}
     {{- $ref := false -}}
     {{- $useFromChart := or $envFrom.useFromChart (not (hasKey $envFrom "useFromChart")) -}}
     {{- if eq ($envFrom).type "secret" -}}
-      {{- $secretName := include "common.helpers.names.secretName" ( list $ (($envFrom).name | default $name) $useFromChart ) }}
+      {{- $secretName := include "common.helpers.names.secretName" ( list $root (($envFrom).name | default $name) $useFromChart ) -}}
       {{- $ref = dict "secretRef" (dict "name" $secretName) -}}
 
     {{- else if eq ($envFrom).type "configMap" -}}
-      {{- $configMapName := include "common.helpers.names.configMapName" ( list $ (($envFrom).name | default $name) $useFromChart ) }}
+      {{- $configMapName := include "common.helpers.names.configMapName" ( list $root (($envFrom).name | default $name) $useFromChart ) -}}
       {{- $ref = dict "configMapRef" (dict "name" $configMapName) -}}
       
     {{- end -}}
@@ -33,6 +40,6 @@ env:
   {{- end -}}
   {{- if $envsFrom -}}
 envFrom:
-{{ toYaml $envsFrom }}
-  {{- end }}
+{{ toYaml $envsFrom -}}
+  {{- end -}}
 {{- end }}

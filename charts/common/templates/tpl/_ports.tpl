@@ -13,10 +13,14 @@
         {{- range $_, $port := $service.ports -}}
           {{- $portName := $port.name | trunc 15 | trimAll "-" -}}
           {{- $portEnabled := true -}}
+          {{- $serviceOnly := false -}}
           {{- if hasKey $port "enabled" -}}
             {{- $portEnabled = $port.enabled -}}
           {{- end -}}
-          {{- if $portEnabled -}}
+          {{- if hasKey $port "serviceOnly" -}}
+            {{- $serviceOnly = $port.serviceOnly -}}
+          {{- end -}}
+          {{- if and $portEnabled (not $serviceOnly) -}}
             {{- if has $portName $portNames -}}
               {{- fail (printf "port name '%s' has been already declared!" $portName) -}}
             {{- end -}}
@@ -24,7 +28,15 @@
 
             {{- $containerPort := $port.containerPort | default $port.port -}}
             {{- $protocol := $port.protocol | default "TCP" -}}
-            {{- $ports = append $ports (dict "name" $portName "containerPort" $containerPort "protocol" $protocol) -}}
+            {{- $containerPortSpec := dict "name" $portName "containerPort" $containerPort "protocol" $protocol -}}
+            {{- if $port.hostIP -}}
+              {{- $_ := set $containerPortSpec "hostIP" $port.hostIP -}}
+            {{- end -}}
+            {{- if $port.hostPort -}}
+              {{- $_ := set $containerPortSpec "hostPort" $port.hostPort -}}
+            {{- end -}}
+            {{- $ports = append $ports $containerPortSpec -}}
+
           {{- end -}}
         {{- end -}}
       {{- end -}}
@@ -53,6 +65,12 @@ ports:
   targetPort: {{ $port.containerPort | default ($port.name | trunc 15 | trimAll "-") }}
   port: {{ $port.port }}
   protocol: {{ $port.protocol | default "TCP" }}
+        {{- with $port.nodePort }}
+  nodePort: {{ toYaml . }}
+        {{- end -}}
+        {{- with $port.appProtocol }}
+  appProtocol: {{ toYaml . }}
+        {{- end -}}
       {{- end -}}
     {{- end -}}
   {{- end -}}
