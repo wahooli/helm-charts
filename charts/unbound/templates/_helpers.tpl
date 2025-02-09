@@ -130,7 +130,7 @@ env:
   HEALTHCHECK_PORT: "{{ .Values.unbound.port | default 53 }}"
 
 {{ if (.Values.redisSidecar).enabled }}
-sidecars:
+containers:
   unbound-db:
     image: "{{ (.Values.redisSidecar.image).repository | default "docker.io/redis" }}:{{ (.Values.redisSidecar.image).tag | default "latest" }}"
     imagePullPolicy: {{ (.Values.redisSidecar.image).pullPolicy | default "IfNotPresent" }}

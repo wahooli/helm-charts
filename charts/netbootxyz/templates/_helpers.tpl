@@ -40,6 +40,6 @@ initContainers:
     command:
     - /download-assets.sh
     {{- include "common.tpl.env" . | nindent 4 -}}
-    {{- include "common.tpl.env.envFrom" . | nindent 4 -}}
+    {{- include "common.tpl.env.envFrom" (list $ .) | nindent 4 -}}
     {{- include "common.tpl.volumeMounts" . | nindent 4 -}}
 {{- end }}

@@ -11,6 +11,15 @@ image:
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""
 
+podMonitor:
+  create: false
+  # jobLabel: app.kubernetes.io/name
+  endpoint:
+    filterRunning: true
+    targetPort: http
+    path: /metrics
+    scheme: http
+
 env:
   TZ: Etc/UTC
 

@@ -5,8 +5,21 @@
 replicaCount: 1
 workloadType: Deployment
 
-strategy:
-  type: Recreate
+serviceMonitor:
+  create: false
+  endpoint:
+    targetPort: 9000
+    path: /metrics
+    scheme: http
+metrics:
+  configVolumeName: config
+  enabled: false
+  # image:
+  #   repository: ghcr.io/jsclayton/prometheus-plex-exporter
+  #   pullPolicy: IfNotPresent
+  #   tag: "main"
+# strategy:
+#   type: Recreate
 
 image:
   repository: ghcr.io/linuxserver/plex

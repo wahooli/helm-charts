@@ -30,6 +30,18 @@ image:
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""
 
+serviceMonitor:
+  create: false
+  endpoint:
+    targetPort: 9154
+    path: /metrics
+    scheme: http
+    metricRelabelConfigs:
+    - action: drop
+      regex: (go_.*|process_.*|promhttp_.*)
+      source_labels:
+      - __name__
+
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
@@ -68,6 +80,10 @@ service:
       protocol: TCP
     - name: submission
       port: 587
+      protocol: TCP
+    - name: metrics
+      serviceOnly: true
+      port: 9154
       protocol: TCP
 
 probe:

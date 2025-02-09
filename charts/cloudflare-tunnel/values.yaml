@@ -14,6 +14,15 @@ image:
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""
 
+podMonitor:
+  create: false
+  # jobLabel: app.kubernetes.io/name
+  endpoint:
+    filterRunning: true
+    targetPort: metrics
+    path: /metrics
+    scheme: http
+
 hostname: cloudflare-tunnel
 # subdomain: localdomain
 dnsPolicy: "ClusterFirst"
