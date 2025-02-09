@@ -29,8 +29,8 @@ configMaps:
 {{ include "plex.configMapValues" . }}
 {{- if (.Values.metrics).enabled -}}
 {{- $probePath := "/metrics" -}}
-{{- $exporterImageRepo := ((.Values.metrics).image).repository | default "jsclayton/prometheus-plex-exporter" -}}
-{{- if contains "ghcr.io/axsuul/plex-media-server-exporter" $exporterImageRepo }}
+{{- $exporterImageRepo := ((.Values.metrics).image).repository | default "ghcr.io/jsclayton/prometheus-plex-exporter" -}}
+{{- if contains "axsuul/plex-media-server-exporter" $exporterImageRepo }}
   {{- $probePath = "/" -}}
 {{- end }}
 env:

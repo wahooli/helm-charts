@@ -12,10 +12,9 @@ serviceMonitor:
     path: /metrics
     scheme: http
 metrics:
-  configVolumeName: config
   enabled: false
-  # image:
-  #   repository: ghcr.io/jsclayton/prometheus-plex-exporter
+  image:
+    repository: ghcr.io/jsclayton/prometheus-plex-exporter
   #   pullPolicy: IfNotPresent
   #   tag: "main"
 # strategy:
