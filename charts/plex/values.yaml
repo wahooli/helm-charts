@@ -93,6 +93,10 @@ service:
     - name: dlna-tcp
       port: 32469
       protocol: TCP
+    - name: metrics-2
+      serviceOnly: true
+      port: 9594
+      protocol: TCP
 
 probe:
   liveness:

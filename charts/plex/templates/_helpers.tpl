@@ -28,10 +28,10 @@ configMaps:
 {{- define "plex.workloadValues" -}}
 {{ include "plex.configMapValues" . }}
 {{- if (.Values.metrics).enabled -}}
-{{- $probePath := "/" -}}
-{{- $exporterImageRepo := ((.Values.metrics).image).repository | default "ghcr.io/axsuul/plex-media-server-exporter" -}}
-{{- if contains "jsclayton/prometheus-plex-exporter" $exporterImageRepo }}
-  {{- $probePath = "/metrics" -}}
+{{- $probePath := "/metrics" -}}
+{{- $exporterImageRepo := ((.Values.metrics).image).repository | default "jsclayton/prometheus-plex-exporter" -}}
+{{- if contains "ghcr.io/axsuul/plex-media-server-exporter" $exporterImageRepo }}
+  {{- $probePath = "/" -}}
 {{- end }}
 env:
   DOCKER_MODS: "linuxserver/mods:universal-package-install"
