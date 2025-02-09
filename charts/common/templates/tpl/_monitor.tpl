@@ -3,6 +3,7 @@ usage: {{ include "common.tpl.monitorEndpoint" [endpoint spec] }}
 */}}
 {{- define "common.tpl.monitorEndpoint" }}
 {{- $port := .targetPort | default .port -}}
+{{- $scrapeInterval := .scrape_interval | default .interval -}}
 {{- if not $port -}}
   {{- fail "Service or Pod monitor requires target port, defined by 'targetPort' or 'port' value!" -}}
 {{- end -}}
@@ -53,10 +54,6 @@ usage: {{ include "common.tpl.monitorEndpoint" [endpoint spec] }}
   honorTimestamps: {{ toYaml . }}
 {{- end -}}
 
-{{- with .interval }}
-  interval: {{ toYaml . }}
-{{ end -}}
-
 {{- with .max_scrape_size }}
   max_scrape_size: {{ toYaml . }}
 {{- end -}}
@@ -97,8 +94,8 @@ usage: {{ include "common.tpl.monitorEndpoint" [endpoint spec] }}
   scrapeTimeout: {{ toYaml . }}
 {{- end -}}
 
-{{- with .scrape_interval }}
-  scrape_interval: {{ toYaml . }}
+{{- if $scrapeInterval }}
+  scrape_interval: {{ toYaml $scrapeInterval }}
 {{- end -}}
 
 {{- with .seriesLimit }}

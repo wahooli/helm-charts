@@ -23,7 +23,13 @@ spec:
   discoveryRole: {{ toYaml . }}
       {{- end }}
   endpoints:
-  {{- include "common.tpl.monitorEndpoint" .Values.serviceMonitor.endpoint | nindent 2 }}
+      {{- if .Values.serviceMonitor.endpoints -}}
+        {{- range $_, $endpoint := .Values.serviceMonitor.endpoints }}
+          {{- include "common.tpl.monitorEndpoint" $endpoint | nindent 2 }}
+        {{- end -}}
+      {{- else -}}
+        {{- include "common.tpl.monitorEndpoint" .Values.serviceMonitor.endpoint | nindent 2 }}
+      {{- end -}}
       {{- with .Values.serviceMonitor.jobLabel }}
   jobLabel: {{ toYaml . }}
       {{- end }}

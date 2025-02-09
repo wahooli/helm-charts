@@ -20,7 +20,13 @@ spec:
         {{- toYaml . | nindent 4 }}
       {{- end }}
   podMetricsEndpoints:
-  {{- include "common.tpl.monitorEndpoint" .Values.podMonitor.endpoint | nindent 2 }}
+      {{- if .Values.podMonitor.endpoints -}}
+        {{- range $_, $endpoint := .Values.podMonitor.endpoints }}
+          {{- include "common.tpl.monitorEndpoint" $endpoint | nindent 2 }}
+        {{- end -}}
+      {{- else -}}
+        {{- include "common.tpl.monitorEndpoint" .Values.podMonitor.endpoint | nindent 2 }}
+      {{- end -}}
       {{- with .Values.podMonitor.jobLabel }}
   jobLabel: {{ toYaml . }}
       {{- end }}
