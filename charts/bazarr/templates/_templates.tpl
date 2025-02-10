@@ -1,11 +1,18 @@
 {{- define "bazarr.postStartScript" -}}
 #!/usr/bin/with-contenv bash
-APIKEY_FILE="/shared/apikey"
+APIKEY_FILE="${APIKEY_FILE:-/shared/apikey}"
 
 if [[ -f "${APIKEY_FILE}" ]]; then
   sleep 60
   exit 0
 fi
+
+APIKEY_DIR=$(dirname "${APIKEY_FILE}")
+if [ ! -d "$APIKEY_DIR" ]; then
+  echo "Creating directory '$APIKEY_DIR'"
+  mkdir -p "${APIKEY_DIR}"
+fi
+chmod a+rX "${APIKEY_DIR}"
 
 CONFIG_YAML="${CONFIG_YAML:-/config/config/config.yaml}"
 
@@ -22,6 +29,7 @@ while true; do
     echo "Read API key."
     echo -n "${APIKEY}" > "$APIKEY_FILE"
     echo "Wrote API key to file: $APIKEY_FILE"
+    chmod a+r "${APIKEY_FILE}"
     break
   fi
 done

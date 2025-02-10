@@ -17,6 +17,7 @@ metrics:
   image:
     repository: ghcr.io/onedr0p/exportarr
     tag: v2.0.1
+  # configVolumeName: config
   # following envs are computed defaults, by defining env key as probe key, will override defaults
   # env:
   #   URL: http://127.0.0.1:6767

@@ -95,7 +95,7 @@ persistence:
         name: metrics-exporter-entrypoint
         defaultMode: 0777
 containers:
-  prometheus-exporter:
+  plex-prometheus-exporter:
     image:
       repository: {{ $exporterImageRepo }}
       pullPolicy: {{ ((.Values.metrics).image).pullPolicy | default "IfNotPresent" }}

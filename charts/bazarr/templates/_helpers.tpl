@@ -70,17 +70,25 @@ env:
 
 {{- define "bazarr.workloadValues" -}}
   {{- if (.Values.metrics).enabled -}}
-    {{- $configVolumeName := (.Values.metrics).configVolumeName | default "config" -}}
+    {{- $configVolumeName := (.Values.metrics).configVolumeName -}}
+    {{- if and (.Values.metrics).enabled (not (hasKey (.Values).metrics "configVolumeName")) -}}
+      {{- $configVolumeName = "config" -}}
+    {{- end -}}
     {{- include "bazarr.configMapValues" . }}
 env:
   DOCKER_MODS: "linuxserver/mods:universal-package-install"
   INSTALL_PACKAGES: yq
+{{- if hasKey .Values.persistence $configVolumeName }}
+  APIKEY_FILE: /config/shared/apikey
+{{- end }}
 persistence:
+{{- if not (hasKey .Values.persistence $configVolumeName) }}
   shared:
     mount:
     - path: /shared
     spec:
       emptyDir: {}
+{{- end }}
   metrics-entrypoint:
     enabled: true
     mount:
@@ -116,6 +124,15 @@ containers:
       {{- toYaml . | nindent 6 }}
     {{ end -}}
     {{- if hasKey .Values.persistence $configVolumeName }}
+    volumeMounts:
+    - name: {{ $configVolumeName }}
+      mountPath: /shared
+      subPath: shared
+      readOnly: true
+      {{- if semverCompare ">=1.31-0" .Capabilities.KubeVersion.GitVersion }}
+      recursiveReadOnly: IfPossible
+      {{- end }}
+    {{- else }}
     volumeMounts:
     - name: shared
       mountPath: /shared
