@@ -1,4 +1,4 @@
-{{- define "prowlarr.serviceValues" -}}
+{{- define "bazarr.serviceValues" -}}
   {{- $ctx := deepCopy . -}}
   {{- if (.Values.service).main -}}
     {{- $ports := ((.Values.service).main).ports | default list -}}
@@ -12,7 +12,20 @@
   {{- pick $ctx "Values" | toYaml -}}
 {{- end }}
 
-{{- define "prowlarr.metricsProbes" -}}
+{{- define "bazarr.configMapValues" -}}
+{{- $configMaps := dict -}}
+{{- range $configMapName, $configMap := .Values.configMaps -}}
+  {{- $name := $configMap.name | default $configMapName -}}
+  {{- $_ := set $configMaps $name $configMap -}}
+{{- end -}}
+{{- if (.Values.metrics).enabled -}}
+  {{- $_ := set $configMaps "metrics-exporter-scripts" (dict "data" (dict "post-startup.sh" (include "bazarr.postStartScript" .))) -}}
+{{- end -}}
+configMaps:
+  {{- toYaml $configMaps | nindent 2 -}}
+{{- end }}
+
+{{- define "bazarr.metricsProbes" -}}
   {{- /* use defaults if probes is not defined.  */ -}}
   {{- if hasKey (.Values).metrics "probe" }}
 probe:
@@ -42,24 +55,44 @@ probe:
   {{- end -}}
 {{- end }}
 
-{{- define "prowlarr.metricsEnv" -}}
+{{- define "bazarr.metricsEnv" -}}
   {{- /* use defaults if envs is not defined.  */ -}}
   {{- if hasKey (.Values).metrics "env" }}
 env:
     {{- toYaml .Values.metrics.env | nindent 2 }}
   {{- else }}
 env:
-  URL: http://127.0.0.1:9696
-  CONFIG: /config/config.xml
+  URL: http://127.0.0.1:6767
+  API_KEY_FILE: /shared/apikey
   PORT: {{ ((.Values.metrics).port | default "9707") | quote }}
   {{- end -}}
 {{- end }}
 
-{{- define "prowlarr.workloadValues" -}}
+{{- define "bazarr.workloadValues" -}}
   {{- if (.Values.metrics).enabled -}}
     {{- $configVolumeName := (.Values.metrics).configVolumeName | default "config" -}}
+    {{- include "bazarr.configMapValues" . }}
+env:
+  DOCKER_MODS: "linuxserver/mods:universal-package-install"
+  INSTALL_PACKAGES: yq
+persistence:
+  shared:
+    mount:
+    - path: /shared
+    spec:
+      emptyDir: {}
+  metrics-entrypoint:
+    enabled: true
+    mount:
+    - path: /custom-services.d/post-startup.sh
+      subPath: post-startup.sh
+    spec:
+      useFromChart: true
+      configMap:
+        name: metrics-exporter-scripts
+        defaultMode: 0777
 containers:
-  prowlarr-exporter:
+  bazarr-exporter:
     image:
       repository: {{ ((.Values.metrics).image).repository | default "ghcr.io/onedr0p/exportarr" }}
       pullPolicy: {{ ((.Values.metrics).image).pullPolicy | default "IfNotPresent" }}
@@ -67,25 +100,25 @@ containers:
       {{- with ((.Values.metrics).image).digest }}
       digest: {{ toYaml . }}
       {{- end }}
-    {{- include "prowlarr.metricsEnv" . | nindent 4 }}
+    {{- include "bazarr.metricsEnv" . | nindent 4 }}
 {{- with .Values.metrics.extraEnv }}
       {{- toYaml . | nindent 6 }}
 {{- end }}
     args:
-    - prowlarr
+    - bazarr
     ports:
     - containerPort: {{ (.Values.metrics).port | default 9707 }}
       name: metrics
       protocol: TCP
-    {{- include "prowlarr.metricsProbes" . | nindent 4 }}
+    {{- include "bazarr.metricsProbes" . | nindent 4 }}
     {{- with (.Values.metrics).resources }}
     resources:
       {{- toYaml . | nindent 6 }}
     {{ end -}}
     {{- if hasKey .Values.persistence $configVolumeName }}
     volumeMounts:
-    - name: {{ $configVolumeName }}
-      mountPath: /config
+    - name: shared
+      mountPath: /shared
       readOnly: true
       {{- if semverCompare ">=1.31-0" .Capabilities.KubeVersion.GitVersion }}
       recursiveReadOnly: IfPossible

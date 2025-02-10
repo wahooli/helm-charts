@@ -25,14 +25,56 @@ configMaps:
   {{- toYaml $configMaps | nindent 2 -}}
 {{- end }}
 
+{{- define "plex.metricsProbes" -}}
+  {{- $probePath := "/metrics" -}}
+  {{- $exporterImageRepo := ((.Values.metrics).image).repository | default "ghcr.io/jsclayton/prometheus-plex-exporter" -}}
+  {{- if contains "axsuul/plex-media-server-exporter" $exporterImageRepo }}
+    {{- $probePath = "/" -}}
+  {{- end }}
+  {{- /* use defaults if probes is not defined.  */ -}}
+  {{- if hasKey (.Values).metrics "probe" }}
+probe:
+    {{- toYaml .Values.metrics.probe | nindent 2 }}
+  {{- else }}
+probe:
+  readiness:
+    httpGet:
+      default: true
+      path: {{ $probePath }}
+      port: metrics
+    failureThreshold: 10
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    successThreshold: 1
+    timeoutSeconds: 1
+  liveness:
+    httpGet:
+      default: true
+      path: {{ $probePath }}
+      port: metrics
+    failureThreshold: 10
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    successThreshold: 1
+    timeoutSeconds: 1
+  startup:
+    exec:
+      default: true
+      command:
+      - sh
+      - -c
+      - test -e /shared/token
+    periodSeconds: 5
+    failureThreshold: 120
+    successThreshold: 1
+    timeoutSeconds: 1
+  {{- end -}}
+{{- end }}
+
 {{- define "plex.workloadValues" -}}
 {{ include "plex.configMapValues" . }}
-{{- if (.Values.metrics).enabled -}}
-{{- $probePath := "/metrics" -}}
-{{- $exporterImageRepo := ((.Values.metrics).image).repository | default "ghcr.io/jsclayton/prometheus-plex-exporter" -}}
-{{- if contains "axsuul/plex-media-server-exporter" $exporterImageRepo }}
-  {{- $probePath = "/" -}}
-{{- end }}
+  {{- if (.Values.metrics).enabled -}}
+  {{- $exporterImageRepo := ((.Values.metrics).image).repository | default "ghcr.io/jsclayton/prometheus-plex-exporter" }}
 env:
   DOCKER_MODS: "linuxserver/mods:universal-package-install"
   INSTALL_PACKAGES: xmlstarlet
@@ -95,41 +137,10 @@ containers:
     - mountPath: /entrypoint-override.sh
       name: metrics-entrypoint
       subPath: entrypoint-override.sh
-    probe:
-      readiness:
-        httpGet:
-          default: true
-          path: {{ $probePath }}
-          port: metrics
-        failureThreshold: 10
-        initialDelaySeconds: 5
-        periodSeconds: 5
-        successThreshold: 1
-        timeoutSeconds: 1
-      liveness:
-        httpGet:
-          default: true
-          path: {{ $probePath }}
-          port: metrics
-        failureThreshold: 10
-        initialDelaySeconds: 5
-        periodSeconds: 5
-        successThreshold: 1
-        timeoutSeconds: 1
-      startup:
-        exec:
-          default: true
-          command:
-          - sh
-          - -c
-          - test -e /shared/token
-        periodSeconds: 5
-        failureThreshold: 120
-        successThreshold: 1
-        timeoutSeconds: 1
+    {{- include "plex.metricsProbes" . | nindent 4 }}
+    {{- with (.Values.metrics).resources }}
     resources:
-      limits:
-        cpu: 100m
-        memory: 100Mi
+      {{- toYaml . | nindent 6 }}
+    {{ end -}}
 {{- end }}
 {{- end }}

@@ -17,8 +17,13 @@ metrics:
     repository: ghcr.io/jsclayton/prometheus-plex-exporter
   #   pullPolicy: IfNotPresent
   #   tag: "main"
-# strategy:
-#   type: Recreate
+  # these will be supplied alongside default values
+  # env: {}
+  # probe: {} # can be disabled by defining empty key, or to override defaults
+  # resources:
+  #   limits:
+  #     cpu: 100m
+  #     memory: 100Mi
 
 image:
   repository: ghcr.io/linuxserver/plex

@@ -12,11 +12,54 @@
   {{- pick $ctx "Values" | toYaml -}}
 {{- end }}
 
+{{- define "radarr.metricsProbes" -}}
+  {{- /* use defaults if probes is not defined.  */ -}}
+  {{- if hasKey (.Values).metrics "probe" }}
+probe:
+    {{- toYaml .Values.metrics.probe | nindent 2 }}
+  {{- else }}
+probe:
+  readiness:
+    httpGet:
+      default: true
+      path: /
+      port: metrics
+    failureThreshold: 10
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    successThreshold: 1
+    timeoutSeconds: 1
+  liveness:
+    httpGet:
+      default: true
+      path: /
+      port: metrics
+    failureThreshold: 10
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    successThreshold: 1
+    timeoutSeconds: 1
+  {{- end -}}
+{{- end }}
+
+{{- define "radarr.metricsEnv" -}}
+  {{- /* use defaults if envs is not defined.  */ -}}
+  {{- if hasKey (.Values).metrics "env" }}
+env:
+    {{- toYaml .Values.metrics.env | nindent 2 }}
+  {{- else }}
+env:
+  URL: http://127.0.0.1:7878
+  CONFIG: /config/config.xml
+  PORT: {{ ((.Values.metrics).port | default "9707") | quote }}
+  {{- end -}}
+{{- end }}
+
 {{- define "radarr.workloadValues" -}}
   {{- if (.Values.metrics).enabled -}}
     {{- $configVolumeName := (.Values.metrics).configVolumeName | default "config" -}}
 containers:
-  exportarr:
+  radarr-exporter:
     image:
       repository: {{ ((.Values.metrics).image).repository | default "ghcr.io/onedr0p/exportarr" }}
       pullPolicy: {{ ((.Values.metrics).image).pullPolicy | default "IfNotPresent" }}
@@ -24,11 +67,8 @@ containers:
       {{- with ((.Values.metrics).image).digest }}
       digest: {{ toYaml . }}
       {{- end }}
-    env:
-      URL: http://127.0.0.1:7878
-      CONFIG: /config/config.xml
-      PORT: {{ ((.Values.metrics).port | default "9707") | quote }}
-{{- with .Values.metrics.env }}
+    {{- include "radarr.metricsEnv" . | nindent 4 }}
+{{- with .Values.metrics.extraEnv }}
       {{- toYaml . | nindent 6 }}
 {{- end }}
     args:
@@ -37,37 +77,19 @@ containers:
     - containerPort: {{ (.Values.metrics).port | default 9707 }}
       name: metrics
       protocol: TCP
-    probe:
-      readiness:
-        httpGet:
-          default: true
-          path: /
-          port: metrics
-        failureThreshold: 10
-        initialDelaySeconds: 5
-        periodSeconds: 5
-        successThreshold: 1
-        timeoutSeconds: 1
-      liveness:
-        httpGet:
-          default: true
-          path: /
-          port: metrics
-        failureThreshold: 10
-        initialDelaySeconds: 5
-        periodSeconds: 5
-        successThreshold: 1
-        timeoutSeconds: 1
+    {{- include "radarr.metricsProbes" . | nindent 4 }}
+    {{- with (.Values.metrics).resources }}
     resources:
-      limits:
-        cpu: 100m
-        memory: 100Mi
+      {{- toYaml . | nindent 6 }}
+    {{ end -}}
     {{- if hasKey .Values.persistence $configVolumeName }}
     volumeMounts:
     - name: {{ $configVolumeName }}
       mountPath: /config
       readOnly: true
+      {{- if semverCompare ">=1.31-0" .Capabilities.KubeVersion.GitVersion }}
       recursiveReadOnly: IfPossible
+      {{- end }}
     {{- end }}
   {{- end }}
 {{- end }}

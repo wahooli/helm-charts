@@ -11,6 +11,31 @@ image:
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""
 
+metrics:
+  enabled: false
+  port: 9707
+  image:
+    repository: ghcr.io/onedr0p/exportarr
+    tag: v2.0.1
+  # following envs are computed defaults, by defining env key as probe key, will override defaults
+  # env:
+  #   URL: http://127.0.0.1:6767
+  #   API_KEY_FILE: /shared/apikey
+  #   PORT: "9707"
+  # these will be supplied alongside default values if not overridden
+  # extraEnv: {}
+  # probe: {} # can be disabled by defining empty key, or to override defaults
+  # resources:
+  #   limits:
+  #     cpu: 100m
+  #     memory: 100Mi
+serviceMonitor:
+  create: false
+  endpoint:
+    targetPort: 9707
+    path: /metrics
+    scheme: http
+
 hostname: bazarr
 # subdomain: localdomain
 dnsPolicy: "ClusterFirstWithHostNet"
