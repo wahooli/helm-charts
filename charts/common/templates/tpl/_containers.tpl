@@ -36,6 +36,10 @@ usage: {{ include "common.tpl.container" (list $ [container spec] [bool: is main
 
   {{- /* fallback logic not to break previous sidecar implementations */ -}}
   {{- $image := $container.image -}}
+  {{- $containerEnabled := true -}}
+  {{- if hasKey $container "enabled" -}}
+    {{- $containerEnabled = $container.enabled -}}
+  {{- end -}}
   {{- $imagePullPolicy := $container.imagePullPolicy | default "IfNotPresent" -}}
   {{- if kindIs "map" $container.image -}}
     {{- $imagePullPolicy = ($container.image).pullPolicy | default "IfNotPresent"  -}}
@@ -50,6 +54,7 @@ usage: {{ include "common.tpl.container" (list $ [container spec] [bool: is main
     {{- end -}}
     {{- $image = printf "%s:%s" $container.image.repository $tag -}}
   {{- end -}}
+  {{- if $containerEnabled -}}
 - name: {{ $container.name }}
   {{- with $container.securityContext }}
   securityContext:
@@ -145,6 +150,7 @@ usage: {{ include "common.tpl.container" (list $ [container spec] [bool: is main
   {{- with $container.resources }}
   resources:
     {{- toYaml . | nindent 4 }}
+  {{- end }}
   {{- end }}
 {{- end }}
 
