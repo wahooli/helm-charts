@@ -1,0 +1,208 @@
+# cluster:
+#   ordinals:
+#     start: 0
+#   replicaCount: 3
+
+replicaCount: 1
+workloadType: StatefulSet
+
+podManagementPolicy: Parallel
+# ordinals:
+#   start: 0
+image:
+  repository: quay.io/coreos/etcd
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+
+etcd:
+  advertiseClientUrls: $(URI_SCHEME)://$(HOSTNAME).$(SERVICE_FQDN):2379,$(URI_SCHEME)://$(HOSTNAME).$(SERVICE_NAME):2379
+  initialClusterState: new
+  initialClusterToken: etcd-$(K8S_NAMESPACE)
+  initialAdvertisePeerURLs: $(URI_SCHEME)://$(HOSTNAME).$(SERVICE_FQDN):2380
+
+ssl:
+  enabled: false
+  generateCertificates: true
+  # issuerRef:
+  #   name: selfsigned
+  #   kind: ClusterIssuer
+
+env:
+  K8S_NAMESPACE:
+    valueFrom:
+      fieldRef:
+        fieldPath: metadata.namespace
+  HOSTNAME:
+    valueFrom:
+      fieldRef:
+        fieldPath: metadata.name
+  SERVICE_NAME:
+    valueFrom:
+      fieldRef:
+        fieldPath: metadata.annotations['serviceName']
+  SERVICE_FQDN:
+    valueFrom:
+      fieldRef:
+        fieldPath: metadata.annotations['serviceFQDN']
+  ETCDCTL_ENDPOINTS: $(HOSTNAME).$(SERVICE_NAME):2379
+
+# certificates:
+#   client:
+#     issuerRef:
+#       name: self-signed
+#       kind: ClusterIssuer
+
+command:
+- /usr/local/bin/etcd
+args:
+- --name=$(HOSTNAME)
+- --data-dir=/data
+- --wal-dir=/data/wal
+- --listen-peer-urls=$(URI_SCHEME)://0.0.0.0:2380
+- --listen-client-urls=$(URI_SCHEME)://0.0.0.0:2379
+- --advertise-client-urls={{ .Values.etcd.advertiseClientUrls | default "$(URI_SCHEME)://$(HOSTNAME).$(SERVICE_NAME):2379" }}
+- --initial-cluster-state={{ .Values.etcd.initialClusterState | default "new" }}
+- --initial-cluster-token={{ .Values.etcd.initialClusterToken | default "etcd-$(K8S_NAMESPACE)" }}
+- --initial-advertise-peer-urls={{ .Values.etcd.initialAdvertisePeerURLs | default "$(URI_SCHEME)://$(HOSTNAME).$(SERVICE_NAME):2380" }}
+- --listen-metrics-urls=http://0.0.0.0:8080
+# hostname: etcd
+# subdomain: localdomain
+# dnsPolicy: "ClusterFirstWithHostNet"
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+gateway:
+  enabled: false
+  replicaCount: 1
+  command:
+  - /usr/local/bin/etcd
+  - gateway
+  - start
+  args:
+  - --listen-addr=0.0.0.0:2379
+  resources: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  waitForEtcd:
+    enabled: true
+    image: busybox:1.37.0
+    imagePullPolicy: IfNotPresent
+  probe:
+    # both liveness and readiness probes are modified if ssl is enabled, just beware
+    liveness:
+      enabled: true
+      initialDelaySeconds: 15
+      periodSeconds: 20
+      timeoutSeconds: 3
+      successThreshold: 1
+      failureThreshold: 3
+      httpGet:
+        path: /health
+        port: 2379
+    readiness:
+      enabled: true
+      initialDelaySeconds: 5
+      periodSeconds: 10
+      timeoutSeconds: 3
+      successThreshold: 1
+      failureThreshold: 30
+      httpGet:
+        path: /health
+        port: 2379
+  service:
+    main:
+      publishNotReadyAddresses: true
+      type: ClusterIP
+      ports:
+      - name: gateway
+        port: 2379
+        protocol: TCP
+
+service:
+  main:
+    type: ClusterIP
+    clusterIP: None
+    publishNotReadyAddresses: true
+    ports:
+    - name: etcd-client
+      port: 2379
+      protocol: TCP
+    - name: etcd-server
+      port: 2380
+      protocol: TCP
+    - name: etcd-metrics
+      port: 8080
+      protocol: TCP
+
+probe:
+  liveness:
+    enabled: true
+    initialDelaySeconds: 15
+    periodSeconds: 10
+    timeoutSeconds: 5
+    successThreshold: 1
+    failureThreshold: 3
+    httpGet:
+      path: /readyz
+      port: 8080
+  readiness:
+    enabled: true
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 5
+    successThreshold: 1
+    failureThreshold: 30
+    httpGet:
+      path: /readyz
+      port: 8080
+  startup:
+    enabled: false
+
+persistence:
+  data:
+    enabled: true
+    mount:
+    - path: /data
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
