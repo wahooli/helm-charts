@@ -16,7 +16,7 @@ spec:
   {{- if not (.Values.autoscaling).enabled }}
   replicas: {{ .Values.replicaCount | default 1 }}
   {{- end }}
-  {{- include "common.tpl.strategy" . | nindent 2 }}
+  {{- include "common.tpl.strategy" (list $ "Deployment") | nindent 2 }}
   selector:
     matchLabels:
       {{- include "common.helpers.labels.selectorLabels" . | nindent 6 }}

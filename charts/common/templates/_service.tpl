@@ -16,7 +16,9 @@
 
       {{- /* Creates headless service copy if is only "main" named service  */ -}}
       {{- $createHeadlessCopy := hasKey $service "createHeadless" | ternary $service.createHeadless (and $isSts (eq "main" $name)) -}}
-
+      {{- if and $createHeadlessCopy (eq "None" ($service.clusterIP)) -}}
+        {{- $createHeadlessCopy = false -}}
+      {{- end -}}
       {{- $serviceSpec := omit $service "createHeadless" "annotations" "name" "labels" "ports" "enabled" "isStsService" "portsFrom" -}}
       {{- $servicePorts := $service.ports -}}
       {{- if $service.portsFrom -}}
@@ -32,10 +34,7 @@
 
       {{- $serviceSpec = merge (dict "selector" $selectorLabels) $serviceSpec -}}
       {{- $headlessSpec := omit $serviceSpec "type" "clusterIP" -}}
-      {{- $serviceName := printf "%s-%s" $fullName ($service.name | default $name) -}}
-      {{- if and (not $service.name) (eq "main" $name) -}}
-        {{- $serviceName = $fullName -}}
-      {{- end -}}
+      {{- $serviceName := (include "common.helpers.names.serviceName" ( list $ ($service.name | default $name))) -}}
       {{- if $createService }}
 ---
 apiVersion: v1

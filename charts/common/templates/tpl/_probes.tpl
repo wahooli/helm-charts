@@ -43,9 +43,9 @@
       {{- if not $probeSpec -}}
         {{- $probeType | printf "%sProbe doesn't have command, http request, tcpSocket or grpc probe defined!" | fail -}}
       {{- end -}}
-      {{- $probeSpec = omit $probeSpec "default" "override" }}
-{{ $probeType | lower }}Probe:
-  {{ $probeSpecType -}}:
+      {{- $probeSpec = omit $probeSpec "default" "override" -}}
+{{- $probeType | lower | nindent 0 }}Probe:
+  {{- $probeSpecType | nindent 2 -}}:
       {{- $probeSpec | toYaml | nindent 4 }}
   initialDelaySeconds: {{ $probe.initialDelaySeconds | default 0 }}
   periodSeconds: {{ $probe.periodSeconds | default 10 }}

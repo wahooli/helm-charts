@@ -1,4 +1,4 @@
-{{- define "common.tpl.containers" }}
+{{- define "common.tpl.containers" -}}
   {{- $containers := merge (.Values.containers | default dict) (dict "main" dict) -}}
   {{- /* append sidecars into containers, if kubernetes version is less than 1.29.0 */ -}}
   {{- if semverCompare "<1.29-0" .Capabilities.KubeVersion.GitVersion -}}
@@ -21,15 +21,26 @@
   {{- end -}}
   {{- $_ := set $containers.main "image" $mainImage -}}
   {{- range $containerName, $container := $containers -}}
-    {{- $_ := set $container "name" ($container.name | default $containerName) -}}
-    {{- include "common.tpl.container" (list $ $container (eq "main" $containerName)) }}
-{{ end -}}
+    {{- if not (and (hasKey $container "enabled") (not $container.enabled)) -}}
+      {{- $_ := set $container "name" ($container.name | default $containerName) -}}
+      {{- include "common.tpl.container" (list $ $container (eq "main" $containerName)) | nindent 0 -}}
+    {{- end -}}
+{{- end -}}
+{{- end }}
+
+{{- define "common.tpl.container.args" }}
+  {{- $root := index . 0 -}}
+  {{- $args := index . 1 -}}
+  {{- with $args -}}
+args:
+{{- tpl (toYaml .) $root | nindent 0 -}}
+  {{- end -}}
 {{- end }}
 
 {{/*
 usage: {{ include "common.tpl.container" (list $ [container spec] [bool: is main container] ) }}
 */}}
-{{- define "common.tpl.container" }}
+{{- define "common.tpl.container" -}}
   {{- $root := index . 0 -}}
   {{- $container := index . 1 -}}
   {{- $isMain := index . 2 -}}
@@ -83,28 +94,25 @@ usage: {{ include "common.tpl.container" (list $ [container spec] [bool: is main
   {{- end }}
   {{- with $container.command }}
   command:
-    {{- toYaml . | nindent 2 }}
-  {{- end }}
-  {{- with $container.args }}
-  args:
-    {{- toYaml . | nindent 2 }}
-  {{- end }}
+    {{- toYaml . | nindent 2 -}}
+  {{- end -}}
+  {{- include "common.tpl.container.args" (list $root $container.args) | nindent 2 -}}
   {{- with $container.lifecycle }}
   lifecycle:
     {{- toYaml . | nindent 4 }}
-  {{- end }}
+  {{- end -}}
   {{- with $container.resizePolicy }}
   resizePolicy:
     {{- toYaml . | nindent 4 }}
-  {{- end }}
+  {{- end -}}
   {{- if $isMain -}}
     {{- include "common.tpl.volumeMounts" $root | nindent 2 -}}
   {{- else -}}
     {{- with $container.volumeMounts }}
   volumeMounts:
-    {{- toYaml . | nindent 2 }}
-    {{- end }}
-  {{- end }}
+    {{- toYaml . | nindent 2 -}}
+    {{- end -}}
+  {{- end -}}
   {{- if and $container.probe (kindIs "map" $container.probe) -}}
     {{- include "common.tpl.probes" $container | nindent 2 -}}
   {{- else -}}

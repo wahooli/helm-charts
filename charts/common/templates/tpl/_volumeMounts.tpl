@@ -22,6 +22,6 @@
   {{- end -}}
   {{- if $volumeMounts -}}
 volumeMounts:
-{{ $volumeMounts | toYaml }}
+{{- $volumeMounts | toYaml | nindent 0 -}}
   {{- end -}}
 {{- end }}

@@ -8,6 +8,9 @@ spec:
   imagePullSecrets:
     {{- toYaml . | nindent 2 }}
   {{- end }}
+  {{- with .Values.shareProcessNamespace }}
+  shareProcessNamespace: {{ toYaml . }}
+  {{- end }}
   {{- with .Values.runtimeClassName }}
   runtimeClassName: {{ toYaml . }}
   {{- end }}
@@ -53,7 +56,7 @@ spec:
   {{- include "common.tpl.initContainers" . | nindent 2 }}
   {{- include "common.tpl.ephemeralContainers" . | nindent 2 }}
   containers:
-  {{- include "common.tpl.containers" .  | nindent 2 }}
+  {{- include "common.tpl.containers" .  | nindent 2 -}}
   {{- with .Values.nodeName }}
   nodeName: {{ toYaml . }}
   {{- end }}

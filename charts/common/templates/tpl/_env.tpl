@@ -1,16 +1,27 @@
 {{- define "common.tpl.env" -}}
   {{- $envVals := (.Values).env | default .env -}}
   {{- $envs := list -}}
+  {{- $variableEnvs := list -}}
   {{- range $name, $env := $envVals | default dict -}}
     {{- if kindIs "map" $env -}}
-      {{- $envs = append $envs (merge (dict "name" $name) $env) -}}
+      {{- $envs = prepend $envs (merge (dict "name" $name) $env) -}}
     {{- else -}}
-      {{- $envs = append $envs (dict "name" $name "value" ($env | toString)) -}}
+      {{- $replaced := regexReplaceAll `\$\([A-Za-z_][A-Za-z0-9_]*\)` ($env | toString) "" -}}
+      {{- $envListItem := dict "name" $name "value" ($env | toString) -}}
+      {{- /* contained $(VAR) pattern variable, will be placed in bottom of the envs list */ -}}
+      {{- if ne $replaced ($env | toString) }}
+        {{- $variableEnvs = append $variableEnvs $envListItem -}}
+      {{- else }}
+        {{- $envs = append $envs $envListItem -}}
+      {{- end }}
     {{- end -}}
+  {{- end -}}
+  {{- range $envVar := $variableEnvs -}}
+    {{- $envs = append $envs $envVar -}}
   {{- end -}}
   {{- if $envs -}}
 env:
-{{ toYaml $envs -}}
+{{- toYaml $envs | nindent 0 -}}
   {{- end -}}
 {{- end }}
 
@@ -40,6 +51,6 @@ usage: {{ include "common.tpl.env.envFrom" (list $ .) }}
   {{- end -}}
   {{- if $envsFrom -}}
 envFrom:
-{{ toYaml $envsFrom -}}
+{{- toYaml $envsFrom | nindent 0 -}}
   {{- end -}}
 {{- end }}

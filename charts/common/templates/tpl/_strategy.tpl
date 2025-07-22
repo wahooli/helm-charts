@@ -1,15 +1,22 @@
+{{/*
+Return workload deployment strategy/updateStrategy
+* first param is root, required
+* second param is the workload type
+usage: {{ include "common.tpl.strategy" ( list $ [workloadType]) }}
+*/}}
 {{- define "common.tpl.strategy" -}}
-  {{- $workloadType := include "common.helpers.names.workloadType" . -}}
+  {{- $root := index . 0 -}}
+  {{- $workloadType := index . 1 -}}
   {{- $hasReadWriteOncePodVolumeClaims := false -}}
-  {{- $isHostNetwork := (.Values).hostNetwork | default false -}}
-  {{- if (include "common.helpers.persistence.hasReadWriteOncePodVolumeClaims" .) -}}
+  {{- $isHostNetwork := ($root.Values).hostNetwork | default false -}}
+  {{- if (include "common.helpers.persistence.hasReadWriteOncePodVolumeClaims" $root) -}}
     {{- $hasReadWriteOncePodVolumeClaims = true -}}
   {{- end -}}
   {{- if ne "Deployment" $workloadType -}}
-    {{- include "common.tpl.strategy.updateStrategy" . -}}
+    {{- include "common.tpl.strategy.updateStrategy" $root -}}
   {{- else }}
 strategy:
-    {{- include "common.tpl.strategy.spec" (list .Values.strategy $workloadType $hasReadWriteOncePodVolumeClaims $isHostNetwork) | nindent 2 }}
+    {{- include "common.tpl.strategy.spec" (list $root.Values.strategy $workloadType $hasReadWriteOncePodVolumeClaims $isHostNetwork) | nindent 2 }}
   {{- end -}}
 {{- end }}
 
@@ -17,7 +24,7 @@ strategy:
   {{- $workloadType := include "common.helpers.names.workloadType" . -}}
   {{- $updateStrategySpec := (hasKey .Values "updateStrategy") | ternary .Values.updateStrategy .Values.strategy }}
 updateStrategy:
-    {{- include "common.tpl.strategy.spec" (list $updateStrategySpec $workloadType false) | nindent 2 }}
+    {{- include "common.tpl.strategy.spec" (list $updateStrategySpec $workloadType false false) | nindent 2 }}
 {{- end }}
 
 {{/* 
@@ -46,10 +53,10 @@ usage: {{ include "common.tpl.strategy.spec" ( list .Values.path.to.strategy/upd
         {{- /* this is more likely of an issue having single replica and assigning the pod to the same node as previously it existed */ -}}
         {{- fail "Recreate is recommended strategy for Deployments using hostNetwork. You can override this warning by setting .Values.strategy.forceType to true" -}}
       {{- else if and (ne "RollingUpdate" $spec.type) (ne "Recreate" $spec.type) -}}
-        {{- fail (printf "Unknown stategy type for %s (%s). You can override this warning by setting .Values.strategy.forceType to true" $workloadType $spec.type) -}}
+        {{- fail (printf "Unknown strategy type for %s (%s). You can override this warning by setting .Values.strategy.forceType to true" $workloadType $spec.type) -}}
       {{- end -}}
     {{- else if and (ne "RollingUpdate" $spec.type) (ne "OnDelete" $spec.type) -}}
-      {{- fail (printf "Unknown stategy type for %s (%s). You can override this warning by setting .Values.strategy.forceType to true" $workloadType $spec.type) -}}
+      {{- fail (printf "Unknown strategy type for %s (%s). You can override this warning by setting .Values.strategy.forceType to true" $workloadType $spec.type) -}}
     {{- end -}}
   {{- end -}}
   {{- toYaml $spec -}}

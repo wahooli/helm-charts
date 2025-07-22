@@ -1,6 +1,7 @@
 {{/* StatefulSet template */}}
 {{- define "common.statefulset" }}
 ---
+{{- $serviceName := (include "common.helpers.names.stsServiceName" .) }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -12,10 +13,23 @@ spec:
   {{- if not (.Values.autoscaling).enabled }}
   replicas: {{ .Values.replicaCount | default 1 }}
   {{- end }}
-  {{- include "common.tpl.strategy" . | nindent 2 }}
-  serviceName: {{ include "common.helpers.names.stsServiceName" . }}
+  {{- include "common.tpl.strategy" (list $ "StatefulSet") | nindent 2 }}
+  {{- if $serviceName }}
+  serviceName: {{ $serviceName }}
+  {{- end }}
   revisionHistoryLimit: {{ .Values.revisionHistoryLimit | default 10 }}
-  minReadySeconds: {{ .Values.progressDeadlineSeconds | default 0 }}
+  minReadySeconds: {{ .Values.minReadySeconds | default 0 }}
+  {{- with .Values.persistentVolumeClaimRetentionPolicy }}
+  persistentVolumeClaimRetentionPolicy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.ordinals }}
+  ordinals:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.podManagementPolicy }}
+  podManagementPolicy: {{ toYaml . }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "common.helpers.labels.selectorLabels" . | nindent 6 }}

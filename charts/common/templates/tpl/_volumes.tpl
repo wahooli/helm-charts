@@ -63,13 +63,8 @@ usage:
       {{- $secretName := $spec.secret.secretName | default $spec.secret.name -}} 
       {{- /* remove "name" key from $spec.secret */ -}}
       {{- if $spec.secret.name -}}
+        {{- $newSecret := omit $spec.secret "name" -}}
         {{- $spec = omit $spec "secret" -}}
-        {{- $newSecret := dict -}}
-        {{- range $key, $value := $spec.secret -}}
-          {{- if ne $key "name" }}
-            {{- $_ := set $newSecret $key $value -}}
-          {{- end -}}
-        {{- end -}}
         {{- $spec = merge $spec (dict "secret" $newSecret ) $spec -}}
       {{- end -}}
 
