@@ -1,7 +1,14 @@
 {{/* Selector labels */}}
 {{- define "common.helpers.labels.selectorLabels" -}}
+{{- $root := $ -}}
 app.kubernetes.io/name: {{ include "common.helpers.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
+{{- if or (.Values.global).selectorLabels .Values.selectorLabels -}}
+  {{- $extraSelectorLabels := (.Values.global).selectorLabels | default .Values.selectorLabels -}}
+  {{- range $label, $labelValue := $extraSelectorLabels -}}
+    {{- (tpl ($label | toString) $root) | nindent 0 -}}: {{ (tpl ($labelValue | toString) $root) }}
+  {{- end }}
+{{- end -}}
 {{- end }}
 
 {{/* Common labels */}}

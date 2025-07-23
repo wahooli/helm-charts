@@ -1,5 +1,7 @@
 {{- define "common.tpl.env" -}}
-  {{- $envVals := (.Values).env | default .env -}}
+  {{- $root := index . 0 -}}
+  {{- $context := index . 1 -}}
+  {{- $envVals := ($context.Values).env | default $context.env -}}
   {{- $envs := list -}}
   {{- $variableEnvs := list -}}
   {{- range $name, $env := $envVals | default dict -}}
@@ -7,7 +9,7 @@
       {{- $envs = prepend $envs (merge (dict "name" $name) $env) -}}
     {{- else -}}
       {{- $replaced := regexReplaceAll `\$\([A-Za-z_][A-Za-z0-9_]*\)` ($env | toString) "" -}}
-      {{- $envListItem := dict "name" $name "value" ($env | toString) -}}
+      {{- $envListItem := dict "name" $name "value" (tpl ($env | toString) $root) -}}
       {{- /* contained $(VAR) pattern variable, will be placed in bottom of the envs list */ -}}
       {{- if ne $replaced ($env | toString) }}
         {{- $variableEnvs = append $variableEnvs $envListItem -}}

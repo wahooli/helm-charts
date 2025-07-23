@@ -74,7 +74,7 @@ usage: {{ include "common.tpl.container" (list $ [container spec] [bool: is main
   image: {{ toYaml $image }}
   imagePullPolicy: {{ toYaml $imagePullPolicy }}
   {{- if and $container.env (kindIs "map" $container.env) -}}
-    {{- include "common.tpl.env" $container | nindent 2 -}}
+    {{- include "common.tpl.env" (list $root $container) | nindent 2 -}}
   {{- else -}}
     {{- with $container.env }}
   env:
