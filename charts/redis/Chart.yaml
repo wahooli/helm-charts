@@ -1,7 +1,6 @@
 apiVersion: v2
 name: redis
 description: Redis helm chart, made in mind for clustermesh setups.
-
 # A chart can be either an 'application' or a 'library' chart.
 #
 # Application charts are a collection of templates that can be packaged into versioned archives
@@ -11,11 +10,10 @@ description: Redis helm chart, made in mind for clustermesh setups.
 # a dependency of application charts to inject those utilities and functions into the rendering
 # pipeline. Library charts do not define any templates and therefore cannot be deployed.
 type: application
-
 # This is the chart version. This version number should be incremented each time you make changes
 # to the chart and its templates, including the app version.
 # Versions are expected to follow Semantic Versioning (https://semver.org/)
-version: 0.1.0-0
+version: 0.1.0-1
 icon: "https://redis.io/wp-content/uploads/2024/04/Logotype.svg"
 maintainers:
   - name: wahooli
