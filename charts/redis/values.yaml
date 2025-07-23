@@ -1,0 +1,379 @@
+# Default values for patroni.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# global:
+#   redis:
+#     cluster:
+#       ordinals:
+#         start: 0
+#       replicaCount: 2
+# This will set the replicaset count more information can be found here: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
+replicaCount: 1
+workloadType: StatefulSet
+
+# ordinals:
+#   start: 1
+
+# cluster:
+#   ordinals:
+#     start: 0
+#   replicaCount: 2
+
+# This sets the container image more information can be found here: https://kubernetes.io/docs/concepts/containers/images/
+image:
+  repository: redis
+  # This sets the pull policy for images.
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+
+env:
+  POD_NAME:
+    valueFrom:
+      fieldRef:
+        fieldPath: metadata.name
+  POD_IP:
+    valueFrom:
+      fieldRef:
+        fieldPath: status.podIP
+  SERVICE_FQDN:
+    valueFrom:
+      fieldRef:
+        fieldPath: metadata.annotations['serviceFQDN']
+  POD_FQDN: $(POD_NAME).$(SERVICE_FQDN)
+redis:
+  initialMaster: 0
+  enabled: true
+  config: |
+    loglevel warning
+    bind 0.0.0.0
+    protected-mode no
+    dir /data
+    appendonly yes
+    replica-announce-ip ${POD_FQDN}
+    replica-announce-port 6379
+    unixsocket /var/run/redis/redis.sock
+    unixsocketperm 700
+  sentinel:
+    enabled: false
+    command: ["/redis-sentinel.sh"]
+    dataVolume: redis-sentinel
+    probe:
+      liveness:
+        enabled: true
+        initialDelaySeconds: 5
+        periodSeconds: 15
+        timeoutSeconds: 5
+        successThreshold: 1
+        failureThreshold: 3
+        tcpSocket:
+          port: 26379
+      readiness:
+        enabled: true
+        initialDelaySeconds: 5
+        periodSeconds: 10
+        timeoutSeconds: 5
+        successThreshold: 1
+        failureThreshold: 30
+        tcpSocket:
+          port: 26379
+      startup:
+        enabled: false
+    config: |
+      dir /tmp
+      bind 0.0.0.0
+      loglevel warning
+      sentinel resolve-hostnames yes
+      sentinel announce-hostnames yes
+      sentinel announce-ip ${POD_FQDN}
+      sentinel announce-port 26379
+      sentinel monitor {{ ((((.Values.global).redis).redis).sentinel).masterName | default .Values.redis.sentinel.masterName }} $MASTER_ADDRESS 6379 2
+      sentinel down-after-milliseconds {{ ((((.Values.global).redis).redis).sentinel).masterName | default .Values.redis.sentinel.masterName }} 5000
+      sentinel failover-timeout {{ ((((.Values.global).redis).redis).sentinel).masterName | default .Values.redis.sentinel.masterName }} 10000
+      sentinel parallel-syncs {{ ((((.Values.global).redis).redis).sentinel).masterName | default .Values.redis.sentinel.masterName }} 1
+    masterName:  # required for sentinel to run
+
+ssl:
+  enabled: false
+  generateCertificates: true
+  # issuerRef:
+  #   name: selfsigned
+  #   kind: ClusterIssuer
+
+# This is for the secrets for pulling an image from a private repository more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+imagePullSecrets: []
+# This is to override the chart name.
+nameOverride: ""
+fullnameOverride: ""
+
+command: ["/redis-server.sh"]
+
+# This section builds out the service account more information can be found here: https://kubernetes.io/docs/concepts/security/service-accounts/
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # false mount a ServiceAccount's API credentials?
+  automount: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+# This is for setting Kubernetes Annotations to a Pod.
+# For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+podAnnotations: {}
+# This is for setting Kubernetes Labels to a Pod.
+# For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+podLabels: {}
+
+podSecurityContext: {}
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+haproxy:
+  enabled: false
+  nameOverride: "proxy"
+  image:
+    repository: ghcr.io/wahooli/docker/haproxy-redis
+  configMaps:
+    redis-health:
+      data:
+        check_redis_master.sh: |
+          #!/bin/bash
+          set -euo pipefail
+
+          MASTER_NAME="{{ ((((.Values.global).redis).redis).sentinel).masterName | default ((.Values.redis).sentinel).masterName }}"
+          SENTINEL_ADDR="{{ printf "%s.%s.svc.%s." (include "common.helpers.names.serviceName" (list $ "sentinel" false "redis")) .Release.Namespace (include "common.helpers.names.clusterDomain" .) }}"
+          SENTINEL_PORT="26379"
+
+          # The IP and Port of the backend server HAProxy is currently checking.
+          # HAProxy provides these as arguments to the script.
+          BACKEND_ADDR=$3
+
+          TLS_CERT="/certs/redis/tls.crt"
+          TLS_KEY="/certs/redis/tls.key"
+          TLS_CACERT="/certs/redis/ca.crt"
+
+          # Build redis-cli options safely
+          REDIS_CLI_OPTS=(--raw -h "$SENTINEL_ADDR" -p "$SENTINEL_PORT")
+
+          if [[ -r "$TLS_CERT" && -r "$TLS_KEY" && -r "$TLS_CACERT" ]]; then
+              REDIS_CLI_OPTS=(--tls --cert "$TLS_CERT" --key "$TLS_KEY" --cacert "$TLS_CACERT" "${REDIS_CLI_OPTS[@]}")
+          fi
+
+          CURRENT_MASTER_ADDR=$(/usr/bin/redis-cli "${REDIS_CLI_OPTS[@]}" SENTINEL get-master-addr-by-name "$MASTER_NAME" | /usr/bin/head -n 1)
+
+          # If result is a hostname, resolve to IP
+          if [[ ! "$CURRENT_MASTER_ADDR" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+              CURRENT_MASTER_ADDR=$(/usr/bin/getent hosts "$CURRENT_MASTER_ADDR" | /usr/bin/awk '{print $1}')
+          fi
+
+          # Normalize backend IP
+          if [[ ! "$BACKEND_ADDR" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+              BACKEND_ADDR=$(/usr/bin/getent hosts "$BACKEND_ADDR" | /usr/bin/awk '{print $1}')
+          fi
+
+          if [[ "$CURRENT_MASTER_ADDR" == "$BACKEND_ADDR" ]]; then
+              exit 0
+          else
+              exit 1
+          fi
+    config:
+      data:
+        haproxy.cfg: |
+          {{- include "haproxy.globalConfig" . }}
+              external-check
+              insecure-fork-wanted
+
+          defaults
+              log global
+              mode tcp
+              option tcplog
+              option dontlognull
+              option redispatch
+              option log-health-checks
+              option abortonclose
+
+              retries 3
+              # Redis wants long-lived connections (especially with connection pools)
+              timeout connect         10s
+              timeout client          30m
+              timeout server          30m
+              timeout queue           1m
+              timeout check           10s
+
+          {{ include "haproxy.resolversBlock" . }}
+
+          # Connects only to primary Redis node
+          frontend redis_write
+              bind *:6379
+              option tcp-smart-accept
+              option clitcpka
+              mode tcp
+              default_backend redis_primary
+
+          # Connects to all Redis nodes, including the primary.
+          frontend redis_read
+              bind *:6380
+              option tcp-smart-accept
+              option clitcpka
+              mode tcp
+              default_backend redis_read_replicas
+
+          backend redis_primary
+              mode tcp
+              option tcp-smart-connect
+              option tcpka
+              option srvtcpka
+              option external-check
+
+              external-check command /scripts/check_redis_master.sh
+
+              default-server inter 3s rise 1 fall 3 on-marked-down shutdown-sessions resolvers k8s init-addr none
+              {{- (include "haproxy.servicePodsServerList" (list $ "6379" "redis" "check" "main" )) | nindent 4 }}
+
+          backend redis_read_replicas
+              mode tcp
+              balance source
+              option tcp-smart-connect
+              option tcpka
+              option srvtcpka
+              option tcp-check
+              # tcp-check connect
+              # tcp-check send PING\r\n
+              # tcp-check expect string +PONG
+
+              default-server inter 15s rise 1 fall 3 on-marked-down shutdown-sessions resolvers k8s init-addr none
+              {{- (include "haproxy.servicePodsServerList" (list $ "6379" "redis" "check ssl verify none")) | nindent 4 }}
+
+          {{ include "haproxy.statsEndpoint" . }}
+
+          {{ include "haproxy.endConfig" . }}
+  service:
+    main:
+      ports:
+      - name: redis-write
+        port: 6379
+        protocol: TCP
+      - name: redis-read
+        port: 6380
+        protocol: TCP
+      - name: stats
+        port: 8404
+        protocol: TCP
+  persistence:
+    scripts:
+      enabled: true
+      mount:
+      - path: /scripts
+      spec:
+        useFromChart: true
+        configMap:
+          name: redis-health
+          defaultMode: 0555
+    redis-certs:
+      enabled: true
+      mount:
+      - path: /certs/redis
+      spec:
+        useFromChart: false
+        secret:
+          optional: true
+          name: >-
+            {{ include "common.helpers.names.chartFullname" (list . "redis") }}-server
+service:
+  main:
+    type: ClusterIP
+    clusterIP: None
+    # createHeadless: false
+    # isStsService: true
+    publishNotReadyAddresses: true
+    ports:
+    - name: redis
+      port: 6379
+      protocol: TCP
+  sentinel:
+    type: ClusterIP
+    publishNotReadyAddresses: true
+    ports:
+    - name: sentinel
+      port: 26379
+      serviceOnly: true
+      protocol: TCP
+
+persistence:
+  data:
+    enabled: true
+    mount:
+    - path: /data
+  socket:
+    enabled: true
+    mount:
+    - path: /var/run/redis
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+probe:
+  liveness:
+    enabled: true
+    initialDelaySeconds: 5
+    periodSeconds: 15
+    timeoutSeconds: 5
+    successThreshold: 1
+    failureThreshold: 3
+    exec:
+      command:
+      - /healthcheck.sh
+  readiness:
+    enabled: true
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+    successThreshold: 1
+    failureThreshold: 30
+    exec:
+      command:
+      - redis-cli
+      - -s
+      - /var/run/redis/redis.sock
+      - ping
+  startup:
+    enabled: true
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    failureThreshold: 60
+    exec:
+      command:
+      - sh
+      - -c
+      - 'test -f /tmp/ready'
+# This section is for setting up autoscaling more information can be found here: https://kubernetes.io/docs/concepts/workloads/autoscaling/
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

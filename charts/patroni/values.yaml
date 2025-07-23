@@ -1,0 +1,670 @@
+# Default values for patroni.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# global:
+#   patroni:
+#     pgbouncer:
+#       enabled: true
+#     cluster:
+#       ordinals:
+#         start: 0
+#       replicaCount: 2
+# This will set the replicaset count more information can be found here: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
+replicaCount: 1
+workloadType: StatefulSet
+shareProcessNamespace: false
+
+# This sets the container image more information can be found here: https://kubernetes.io/docs/concepts/containers/images/
+image:
+  repository: ghcr.io/wahooli/docker/patroni-17
+  # This sets the pull policy for images.
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+
+metrics:
+  enabled: false
+  image:
+    repository: pgsty/pg_exporter
+    tag: v1.0.1
+    pullPolicy: IfNotPresent
+
+selectorLabels:
+  "{{ (.Values.env).PATRONI_KUBERNETES_SCOPE_LABEL | default \"cluster-name\" }}": |-
+    {{- include "patroni.scope" . -}}
+
+podMonitor:
+  create: false
+  endpoint:
+    filterRunning: true
+    targetPort: restapi
+    path: /metrics
+    scheme: http
+
+serviceMonitor:
+  create: false
+  endpoint:
+    targetPort: restapi
+    path: /metrics
+    scheme: http
+
+postgresql:
+  bootstrap:
+    specialAccounts:
+      enabled: true
+      # pgbouncer:
+      #   username: pgbouncer
+      #   password: pgbouncer
+      # pgbouncer_exporter:
+      #   username: pgbouncer_exporter
+      #   password: pgbouncer_exporter
+      # postgres_exporter:
+      #   username: postgres_exporter
+      #   password: postgres_exporter
+    # database: authentik # creates a database with this name
+    # username: authentik # creates a user with this name
+    # password: authentik # sets the password for the user
+    # extraSql:
+    #   example_enable_extensions.sql: |
+    #     CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+    #     CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+    #     CREATE EXTENSION IF NOT EXISTS "pg_stat_statements";
+    #     CREATE EXTENSION IF NOT EXISTS "pg_trgm";
+    #     CREATE EXTENSION IF NOT EXISTS "btree_gist";
+
+# ordinals:
+#   start: 1
+
+configMaps:
+  config:
+    data:
+      patroni.yaml: >
+        {{- include "patroni.config" . }}
+  pg-exporter:
+    enabled: false
+    data:
+      postgres: >
+        {{- include "patroni.postgres_exporter_yaml" . }}
+      pgbouncer: >
+        {{- include "patroni.pgbouncer_exporter_yaml" . }}
+  post-bootstrap:
+    data:
+      00_functions.sql: |
+        CREATE OR REPLACE FUNCTION create_role_if_not_exists(
+            username TEXT,
+            raw_password TEXT
+        ) RETURNS VOID AS $$
+        BEGIN
+            PERFORM 1 FROM pg_roles WHERE rolname = username;
+            IF NOT FOUND THEN
+                EXECUTE format('CREATE ROLE %I WITH LOGIN PASSWORD %L', username, raw_password);
+            END IF;
+        END;
+        $$ LANGUAGE plpgsql;
+
+        -- PgBouncer auth query function
+        CREATE OR REPLACE FUNCTION user_search(uname TEXT)
+        RETURNS TABLE (usename name, passwd text)
+        AS $$
+          SELECT rolname, rolpassword
+          FROM pg_authid
+          WHERE rolname = uname
+            AND rolcanlogin = true
+            AND rolname <> '{{ (.Values.postgresql.bootstrap.specialAccounts.pgbouncer).username | default "pgbouncer" }}'
+            AND rolname <> '{{ (.Values.postgresql.bootstrap.specialAccounts.postgres_exporter).username | default "postgres_exporter" }}'
+            AND rolname <> '{{ (.Values.postgresql.bootstrap.specialAccounts.pgbouncer_exporter).username | default "pgbouncer_exporter" }}'
+            AND rolname <> '{{ include "patroni.replicationUsername" . }}';
+        $$ LANGUAGE sql
+          SECURITY DEFINER
+          STABLE;
+
+        -- Secure the functions
+        REVOKE ALL ON FUNCTION user_search(TEXT) FROM PUBLIC;
+        REVOKE ALL ON FUNCTION create_role_if_not_exists(TEXT, TEXT) FROM PUBLIC;
+      01_chart_users.sql: |
+        {{- if (.Values.postgresql.bootstrap.specialAccounts).enabled }}
+        -- Create exporter roles
+        SELECT create_role_if_not_exists('{{ (.Values.postgresql.bootstrap.specialAccounts.postgres_exporter).username | default "postgres_exporter" }}', '{{ (.Values.postgresql.bootstrap.specialAccounts.postgres_exporter).password | default "postgres_exporter_pass" }}');
+        GRANT pg_monitor TO {{ (.Values.postgresql.bootstrap.specialAccounts.postgres_exporter).username | default "postgres_exporter" }};
+        GRANT pg_read_all_stats TO {{ (.Values.postgresql.bootstrap.specialAccounts.postgres_exporter).username | default "postgres_exporter" }};
+        REVOKE CREATE ON SCHEMA public FROM {{ (.Values.postgresql.bootstrap.specialAccounts.postgres_exporter).username | default "postgres_exporter" }};
+
+        -- SELECT create_role_if_not_exists('{{ (.Values.postgresql.bootstrap.specialAccounts.pgbouncer_exporter).username | default "pgbouncer_exporter" }}', '{{ (.Values.postgresql.bootstrap.specialAccounts.pgbouncer_exporter).password | default "pgbouncer_exporter_pass" }}');
+        -- Restrict schema creation
+        -- REVOKE CREATE ON SCHEMA public FROM {{ (.Values.postgresql.bootstrap.specialAccounts.pgbouncer_exporter).username | default "pgbouncer_exporter" }};
+
+        -- Create PgBouncer auth user and DB
+        SELECT create_role_if_not_exists('{{ (.Values.postgresql.bootstrap.specialAccounts.pgbouncer).username | default "pgbouncer" }}', '{{ (.Values.postgresql.bootstrap.specialAccounts.pgbouncer).password | default "pgbouncer_pass" }}');
+        REVOKE CREATE ON SCHEMA public FROM {{ (.Values.postgresql.bootstrap.specialAccounts.pgbouncer).username | default "pgbouncer" }};
+        REVOKE ALL ON DATABASE postgres FROM {{ (.Values.postgresql.bootstrap.specialAccounts.pgbouncer).username | default "pgbouncer" }};
+        GRANT EXECUTE ON FUNCTION user_search(TEXT) TO {{ (.Values.postgresql.bootstrap.specialAccounts.pgbouncer).username | default "pgbouncer" }};
+        {{- end }}
+        -- end chart bootstrap users
+  pgbouncer-config:
+    enabled: false
+    data:
+      userlist.txt: |
+        {{- if and ((.Values.pgbouncer).adminUser).username ((.Values.pgbouncer).adminUser).password -}}
+        "{{ ((.Values.pgbouncer).adminUser).username }}" "{{ ((.Values.pgbouncer).adminUser).password }}"
+        {{ end }}
+        {{- if (.Values.metrics).enabled -}}
+        "{{ (.Values.postgresql.bootstrap.specialAccounts.pgbouncer_exporter).username | default "pgbouncer_exporter" }}" "{{ (.Values.postgresql.bootstrap.specialAccounts.pgbouncer_exporter).password | default "pgbouncer_exporter_pass" }}"
+        {{- end }}
+      pg_hba.conf: |
+        {{- include "patroni.pgbouncerHbaConf" . -}}
+
+env:
+  PATRONI_NAME:
+    valueFrom:
+      fieldRef:
+        fieldPath: metadata.name
+  POD_NAMESPACE:
+    valueFrom:
+      fieldRef:
+        fieldPath: metadata.namespace
+  POD_IP:
+    valueFrom:
+      fieldRef:
+        fieldPath: status.podIP
+  # PATRONI_NAMESPACE: /$(POD_NAMESPACE)/
+  PATRONI_RESTAPI_CONNECT_ADDRESS: $(POD_IP):8008
+  PATRONI_POSTGRESQL_CONNECT_ADDRESS: $(POD_IP):5432
+  PATRONI_POSTGRESQL_DATA_DIR: data/$(PATRONI_NAME)
+  POSTGRES_USER: postgres
+  PATRONI_SUPERUSER_USERNAME: postgres
+  CONFIG_FILE: /home/postgres/config/patroni.yaml
+  PATRONICTL_CONFIG_FILE: /home/postgres/config/patroni.yaml
+
+ssl:
+  enabled: false
+  generateCertificates: true
+  # etcdClientCertSecret: etcd-client
+  # issuerRef:
+  #   name: selfsigned
+  #   kind: ClusterIssuer
+# This is for the secrets for pulling an image from a private repository more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+imagePullSecrets: []
+# This is to override the chart name.
+nameOverride: ""
+fullnameOverride: ""
+
+patroni:
+  scope:  # required value
+  allowLoginFromUsers:
+  - all
+  allowLoginFrom:
+  - 127.0.0.1/32
+  - ::1/128
+  allowReplicationFrom:
+  - 127.0.0.1/32
+  - ::1/128
+  jsonLog: false
+  config:
+    log:
+      level: WARNING
+
+    # etcd3:
+    #   hosts:
+    #   - etcd-gateway.default.svc.cluster.local.:23790
+    #   use_proxies: true
+    #   # cacert: /home/postgres/certs/etcd/ca.crt
+    #   # cert: /home/postgres/certs/etcd/tls.crt
+    #   # key: /home/postgres/certs/etcd/tls.key
+    #   protocol: https
+
+    restapi:
+      listen: :8008
+      # The 'connect_address' will be set by the PATRONI_RESTAPI_CONNECT_ADDRESS env var
+
+    postgresql:
+      use_unix_socket: true
+      use_unix_socket_repl: false
+      listen: 0.0.0.0:5432
+      # The 'connect_address' will be set by the PATRONI_POSTGRESQL_CONNECT_ADDRESS env var
+      # data_dir: data/patroni1 # This is relative to the user's home dir in the container
+      pgpass: /tmp/pgpass0
+      # authentication:
+      #   replication:
+      #     username: replicator
+      #     # password: rep-pass
+      #   rewind:
+      #     username: rewind_user
+          # password: rewind_password
+      # you should modify pg_hba to use different values, defaults are insecure
+      parameters:
+        unix_socket_directories: '/var/run/postgresql'
+      pg_hba:
+      - local all all trust
+      - host all all 127.0.0.1/32 trust
+      - host all all ::1/128 trust
+      - host replication replicator 127.0.0.1/32 trust
+      - host replication replicator 0.0.0.0/0 md5
+      - host all all 0.0.0.0/0 md5
+
+    bootstrap:
+      post_bootstrap: /post-bootstrap.sh
+      # post_init: /post-init.sh
+      method: initdb
+      dcs:
+        ttl: 20
+        loop_wait: 7
+        retry_timeout: 7
+        maximum_lag_on_failover: 1048576
+        postgresql:
+          use_pg_rewind: true
+          parameters:
+            # ssl: 'on'
+            # ssl_cert_file: '/home/postgres/certs/postgres/tls.crt'
+            # ssl_key_file: '/home/postgres/certs/postgres/tls.key'
+            # ssl_ca_file: '/home/postgres/certs/postgres/ca.crt'
+            password_encryption: 'scram-sha-256'
+            listen_addresses: '*'
+            unix_socket_directories: '/var/run/postgresql'
+            hot_standby: "on"
+            max_connections: 100
+            max_locks_per_transaction: 64
+            max_prepared_transactions: 0
+            wal_log_hints: "on"
+            max_wal_senders: 10
+            max_replication_slots: 10
+            max_worker_processes: 8
+            track_commit_timestamp: 'off'
+            wal_keep_size: 128MB
+            wal_level: logical
+            # wal_level: replica
+            log_destination: 'stderr'
+            logging_collector: 'off'
+            # client_min_messages: 'DEBUG1'   # increase client-side verbosity
+            # log_min_messages: 'DEBUG1'      # increase server-side verbosity
+      initdb:
+      - data-checksums
+      - encoding: UTF8
+      - locale: en_US.UTF-8
+    # tags:
+    #   nosync: false
+    #   preferred: true
+    #   noloadbalance: false
+    #   clonefrom: true
+    #   nostream: false
+
+pgbouncer:
+  enabled: false
+  port: 6432
+  securityContext:
+    runAsUser: 70
+    runAsGroup: 70
+  sqlUsername: pgbouncer
+  image:
+    repository: edoburu/pgbouncer
+    tag: "v1.24.1-p1"
+    # pullPolicy: IfNotPresent
+  env:
+    AUTH_TYPE: scram-sha-256
+    DB_HOST: /var/run/postgresql
+    AUTH_DBNAME: postgres
+    AUTH_QUERY: "SELECT usename, passwd FROM user_search($1)"
+    AUTH_HBA_FILE: /etc/pgbouncer/pg_hba.conf
+  volumeMounts:
+  - name: pgsock
+    mountPath: /var/run/postgresql
+  - name: pgbouncer-config
+    mountPath: /etc/pgbouncer
+  probe:
+    liveness:
+      enabled: true
+      initialDelaySeconds: 30
+      periodSeconds: 15
+      timeoutSeconds: 5
+      successThreshold: 1
+      failureThreshold: 3
+      tcpSocket:
+        port: 6432
+    readiness:
+      enabled: true
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 5
+      successThreshold: 1
+      failureThreshold: 30
+      tcpSocket:
+        port: 6432
+    startup:
+      enabled: false
+  resources: {}
+    # limits:
+    #   cpu: 100m
+    #   memory: 128Mi
+    # requests:
+    #   cpu: 50m
+    #   memory: 64Mi
+
+# This section builds out the service account more information can be found here: https://kubernetes.io/docs/concepts/security/service-accounts/
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # false mount a ServiceAccount's API credentials?
+  automount: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+# This is for setting Kubernetes Annotations to a Pod.
+# For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+podAnnotations: {}
+# This is for setting Kubernetes Labels to a Pod.
+# For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+podLabels: {}
+
+podSecurityContext:
+  fsGroup: 999
+
+securityContext:
+  runAsUser: 999
+  runAsGroup: 999
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+haproxy:
+  enabled: false
+  nameOverride: "proxy"
+  configMaps:
+    config:
+      data:
+        haproxy.cfg: |
+          {{- include "haproxy.globalConfig" . }}
+
+          defaults
+              log global
+              mode tcp
+              option tcplog
+              option dontlognull
+              option redispatch
+              option log-health-checks
+              option abortonclose
+
+              retries 3
+              timeout connect         10s
+              timeout client          15m
+              timeout server          15m
+              timeout queue           1m
+              timeout check           10s
+
+          {{ include "haproxy.resolversBlock" . }}
+
+          # Connects only to primary patroni node
+          frontend postgresql_write
+              bind *:5432
+              option tcp-smart-accept
+              option clitcpka
+              mode tcp
+              default_backend patroni_primary
+
+          # Connects to all Patroni nodes, including the primary.
+          frontend postgresql_read
+              bind *:5433
+              option tcp-smart-accept
+              option clitcpka
+              mode tcp
+              default_backend patroni_read_replicas
+
+          backend patroni_primary
+              mode tcp
+              option tcp-smart-connect
+              option tcpka
+              option srvtcpka
+              option httpclose
+              option httpchk
+              timeout check 10s
+              option httpchk OPTIONS /primary
+              http-check expect status 200
+              default-server inter 3s rise 1 fall 3 on-marked-down shutdown-sessions resolvers k8s init-addr none
+
+              # Non primary nodes will return a 503 error on this endpoint.
+              {{- (include "haproxy.servicePodsServerList" (list $ (ternary "6432" "5432" (.Values.global.patroni.pgbouncer).enabled) "patroni" "check port 8008" "main" )) | nindent 4 }}
+
+          backend patroni_read_replicas
+              mode tcp
+              option tcp-smart-connect
+              option tcpka
+              option srvtcpka
+              balance source
+              option httpclose
+              option httpchk
+              timeout check 10s
+              option httpchk OPTIONS /replica
+              http-check expect status 200
+
+              default-server inter 3s rise 1 fall 3 on-marked-down shutdown-sessions resolvers k8s init-addr none
+              # Read replicas should be available only from this endpoint
+              {{- (include "haproxy.servicePodsServerList" (list $ (ternary "6432" "5432" (.Values.global.patroni.pgbouncer).enabled) "patroni" "check port 8008")) | nindent 4 }}
+
+          {{ include "haproxy.statsEndpoint" . }}
+
+          {{ include "haproxy.endConfig" . }}
+  service:
+    main:
+      ports:
+      - name: psql-write
+        port: 5432
+        protocol: TCP
+      - name: psql-write-alt
+        port: 25432
+        protocol: TCP
+      - name: psql-read
+        port: 5433
+        protocol: TCP
+      - name: stats
+        port: 8404
+        protocol: TCP
+
+service:
+  main:
+    type: ClusterIP
+    clusterIP: None
+    publishNotReadyAddresses: true
+    ports:
+    - name: postgres
+      port: 5432
+      protocol: TCP
+    - name: restapi
+      port: 8008
+      protocol: TCP
+
+persistence:
+  pgdata:
+    enabled: true
+    mount:
+    - path: /home/postgres/data
+  pgsock:
+    enabled: true
+    mount:
+    - path: /var/run/postgresql
+  exporter-config:
+    enabled: false
+    spec:
+      useFromChart: true
+      configMap:
+        name: pg-exporter
+        defaultMode: 0444
+  pgbouncer-config:
+    enabled: true
+    spec: {}
+  pgbouncer-configmap:
+    enabled: false
+    spec:
+      useFromChart: true
+      configMap:
+        name: pgbouncer-config
+        defaultMode: 0444
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+probe:
+  liveness:
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 15
+    timeoutSeconds: 5
+    successThreshold: 1
+    failureThreshold: 3
+    httpGet:
+      path: /health
+      port: 8008
+  readiness:
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    successThreshold: 1
+    failureThreshold: 20
+    httpGet:
+      path: /health
+      port: 8008
+  startup:
+    enabled: true
+    initialDelaySeconds: 25
+    periodSeconds: 5
+    timeoutSeconds: 5
+    successThreshold: 1
+    failureThreshold: 70
+    httpGet:
+      path: /health
+      port: 8008
+
+# This section is for setting up autoscaling more information can be found here: https://kubernetes.io/docs/concepts/workloads/autoscaling/
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+containers:
+  pgbouncer:
+    enabled: false
+  postgres-exporter:
+    enabled: false
+    # image:
+    #   repository: pgsty/pg_exporter
+    #   tag: v1.0.1
+    ports:
+    - containerPort: 9630
+      name: pg-metrics
+      protocol: TCP
+    probe:
+      liveness:
+        enabled: true
+        initialDelaySeconds: 30
+        periodSeconds: 15
+        timeoutSeconds: 5
+        successThreshold: 1
+        failureThreshold: 3
+        httpGet:
+          path: /liveness
+          port: pg-metrics
+      readiness:
+        enabled: true
+        initialDelaySeconds: 30
+        periodSeconds: 10
+        timeoutSeconds: 5
+        successThreshold: 1
+        failureThreshold: 20
+        httpGet:
+          path: /readiness
+          port: pg-metrics
+      startup:
+        enabled: false
+        initialDelaySeconds: 25
+        periodSeconds: 5
+        timeoutSeconds: 5
+        successThreshold: 1
+        failureThreshold: 70
+        httpGet:
+          path: /read
+          port: pg-metrics
+    args:
+    - --log.level=warn
+    env:
+      PG_EXPORTER_EXCLUDE_DATABASE: template0,template1,postgres
+      PG_EXPORTER_NAMESPACE: pg
+      # PG_EXPORTER_URL: postgres://postgres:postgres@:5432/postgres?host=/var/run/postgresql
+    volumeMounts:
+    - name: pgsock
+      mountPath: /var/run/postgresql
+    - name: exporter-config
+      mountPath: /etc/pg_exporter.yml
+      subPath: postgres
+  pgbouncer-exporter:
+    enabled: false
+    # image:
+    #   repository: pgsty/pg_exporter
+    #   tag: v1.0.1
+    ports:
+    - containerPort: 9631
+      name: pgb-metrics
+      protocol: TCP
+    probe:
+      liveness:
+        enabled: true
+        initialDelaySeconds: 30
+        periodSeconds: 15
+        timeoutSeconds: 5
+        successThreshold: 1
+        failureThreshold: 3
+        httpGet:
+          path: /liveness
+          port: pgb-metrics
+      readiness:
+        enabled: true
+        initialDelaySeconds: 30
+        periodSeconds: 10
+        timeoutSeconds: 5
+        successThreshold: 1
+        failureThreshold: 20
+        httpGet:
+          path: /readiness
+          port: pgb-metrics
+      startup:
+        enabled: false
+        initialDelaySeconds: 25
+        periodSeconds: 5
+        timeoutSeconds: 5
+        successThreshold: 1
+        failureThreshold: 70
+        httpGet:
+          path: /read
+          port: pgb-metrics
+    args:
+    - --log.level=warn
+    - --web.listen-address=:9631
+    env:
+      PG_EXPORTER_EXCLUDE_DATABASE: template0,template1,postgres
+      PG_EXPORTER_NAMESPACE: pgbouncer
+    volumeMounts:
+    - name: pgsock
+      mountPath: /var/run/postgresql
+    - name: exporter-config
+      mountPath: /etc/pg_exporter.yml
+      subPath: pgbouncer
