@@ -76,7 +76,7 @@ env:
     {{- end -}}
     {{- include "bazarr.configMapValues" . }}
 env:
-  DOCKER_MODS: "linuxserver/mods:universal-package-install"
+  DOCKER_MODS: "{{ (.Values.metrics).dockerModsUrl | default "lscr.io/linuxserver/mods" }}:universal-package-install"
   INSTALL_PACKAGES: yq
 {{- if hasKey .Values.persistence $configVolumeName }}
   APIKEY_FILE: /config/shared/apikey

@@ -13,6 +13,7 @@ serviceMonitor:
     scheme: http
 metrics:
   enabled: false
+  dockerModsUrl: lscr.io/linuxserver/mods
   image:
     repository: ghcr.io/jsclayton/prometheus-plex-exporter
   #   pullPolicy: IfNotPresent

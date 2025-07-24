@@ -14,6 +14,7 @@ image:
 metrics:
   enabled: false
   port: 9707
+  dockerModsUrl: lscr.io/linuxserver/mods
   image:
     repository: ghcr.io/onedr0p/exportarr
     tag: v2.0.1
