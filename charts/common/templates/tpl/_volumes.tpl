@@ -67,6 +67,11 @@ usage:
         {{- $spec = omit $spec "secret" -}}
         {{- $spec = merge $spec (dict "secret" $newSecret ) $spec -}}
       {{- end -}}
+      {{- if $spec.secret.secretName -}}
+        {{- $newSecret := omit $spec.secret "secretName" -}}
+        {{- $spec = omit $spec "secret" -}}
+        {{- $spec = merge $spec (dict "secret" $newSecret ) $spec -}}
+      {{- end -}}
 
       {{- $secretName = include "common.helpers.names.secretName" ( list .root $secretName $useFromChart ) -}}
       {{- /*
@@ -75,9 +80,10 @@ usage:
       {{- if not $useFromChart -}}
         {{- $secretName = tpl $secretName .root -}}
       {{- end -}}
-      {{- $spec = merge $spec (dict "secret" (dict "secretName" $secretName ) ) $spec -}}
+
+      {{- $spec = merge (omit $spec "secretName") (dict "secret" (dict "secretName" $secretName ) ) $spec -}}
     {{- else if and (not $isPersistentVolumeClaimTemplate) $isPersistentVolumeClaim -}}
-      {{- $pvcName := include "common.helpers.names.persistentVolumeClaimName" ( list .root $name $useFromChart ) -}}
+      {{- $pvcName := include "common.helpers.names.persistentVolumeClaimName" (list .root $name $useFromChart ) -}}
       {{- $spec = (dict "persistentVolumeClaim" (dict "claimName" $pvcName) ) -}}
     {{- end -}}
 

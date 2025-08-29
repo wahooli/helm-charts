@@ -37,6 +37,15 @@ args:
   {{- end -}}
 {{- end }}
 
+{{- define "common.tpl.container.command" }}
+  {{- $root := index . 0 -}}
+  {{- $command := index . 1 -}}
+  {{- with $command -}}
+command:
+{{- tpl (toYaml .) $root | nindent 0 -}}
+  {{- end -}}
+{{- end }}
+
 {{/*
 usage: {{ include "common.tpl.container" (list $ [container spec] [bool: is main container] ) }}
 */}}
@@ -92,10 +101,7 @@ usage: {{ include "common.tpl.container" (list $ [container spec] [bool: is main
   {{- with $container.workingDir }}
   workingDir: {{ toYaml . }}
   {{- end }}
-  {{- with $container.command }}
-  command:
-    {{- toYaml . | nindent 2 -}}
-  {{- end -}}
+  {{- include "common.tpl.container.command" (list $root $container.command) | nindent 2 -}}
   {{- include "common.tpl.container.args" (list $root $container.args) | nindent 2 -}}
   {{- with $container.lifecycle }}
   lifecycle:

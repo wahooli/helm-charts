@@ -42,6 +42,10 @@ spec:
   {{- with .Values.hostNetwork }}
   hostNetwork: {{ toYaml . }}
   {{- end }}
+  {{- with .Values.hostAliases }}
+  hostAliases:
+    {{- toYaml . | nindent 2 }}
+  {{- end }}
   {{- with .Values.hostPID }}
   hostPID: {{ toYaml . }}
   {{- end }}

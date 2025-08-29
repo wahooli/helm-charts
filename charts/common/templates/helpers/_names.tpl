@@ -222,6 +222,28 @@ usage: {{ include "common.helpers.names.serviceDNSNames" ( list $ [name of servi
 {{/*
 Create chart name and version as used by the chart label.
 
+usage: {{ include "common.helpers.names.serviceFQDN" ( list $ [name of service] [chart] [validate]) }}
+*/}}
+{{- define "common.helpers.names.serviceFQDN" -}}
+  {{- $root := index . 0 -}}
+  {{- $serviceName := index . 1 -}}
+  {{- $chart := $root.Chart.Name -}}
+  {{- if ge (len .) 3 -}}
+    {{- $chart = index . 2 -}}
+  {{- end -}}
+  {{- $validate := false -}}
+  {{- if ge (len .) 4 -}}
+    {{- $validate = index . 3 -}}
+  {{- end -}}
+  {{- $serviceName = include "common.helpers.names.serviceName" (list $root $serviceName $validate $chart) -}}
+  {{- $namespace := $root.Release.Namespace -}}
+  {{- $clusterDomain := include "common.helpers.names.clusterDomain" $root -}}
+  {{- printf "%s.%s.svc.%s" $serviceName $namespace $clusterDomain -}}
+{{- end }}
+
+{{/*
+Create chart name and version as used by the chart label.
+
 usage: {{ include "common.helpers.names.chartServiceDNSNames" ( list $ [name of service] [validate (true/false)]) }}
 */}}
 {{- define "common.helpers.names.chartServiceDNSNames" -}}

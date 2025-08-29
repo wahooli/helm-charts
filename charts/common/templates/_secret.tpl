@@ -27,7 +27,7 @@ metadata:
 type: {{ $secret.type | default "Opaque" }}
 data:
     {{- range $secretKey, $secretValue := $secret.data }}
-      {{- $secretKey | nindent 2 }}: {{ $secretValue | toString | b64enc }}
+      {{- $secretKey | nindent 2 }}: {{ (tpl $secretValue $) | toString | b64enc }}
     {{- end }}
   {{- end }}
   {{- end -}}
