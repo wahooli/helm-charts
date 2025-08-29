@@ -2,7 +2,7 @@ apiVersion: v2
 name: common
 description: Template function library
 type: library
-version: 0.0.2-18
+version: 0.0.2-19
 maintainers:
   - name: wahooli
     url: https://github.com/wahooli/
