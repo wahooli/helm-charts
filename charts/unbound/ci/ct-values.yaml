@@ -1,2 +1,6 @@
 unbound:
   port: 5353
+redis:
+  enabled: true
+  haproxy:
+    enabled: true

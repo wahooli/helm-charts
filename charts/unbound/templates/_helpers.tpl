@@ -1,4 +1,3 @@
-
 {{- define "unbound.redisPort" -}}
   {{- if and (.Values.redis).enabled (.Values.redisSidecar).enabled -}}
     {{- fail ".Values.redisSidecar and .Values.redis cannot be enabled both at same time!" -}}
@@ -16,7 +15,10 @@
   {{- end -}}
   {{- $redisHost := "127.0.0.1" -}}
   {{- if (.Values.redis).enabled -}}
-    {{- $redisHost = printf "%s-redis-master" .Release.Name -}}
+    {{- $redisHost = printf "%s.%s.svc.%s." (include "common.helpers.names.serviceName" (list $ "master" false "redis")) .Release.Namespace (include "common.helpers.names.clusterDomain" .) -}}
+    {{- if (.Values.redis.haproxy).enabled -}}
+      {{- $redisHost = printf "%s.%s.svc.%s." (include "common.helpers.names.serviceName" (list $ "proxy" false "redis")) .Release.Namespace (include "common.helpers.names.clusterDomain" .) -}}
+    {{- end -}}
   {{- end -}}
   {{- (.Values.unbound.redis).host | default $redisHost }}
 {{- end }}

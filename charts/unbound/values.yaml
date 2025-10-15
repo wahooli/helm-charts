@@ -65,8 +65,8 @@ unbound:
 # bitnami chart for redis
 redis:
   enabled: false
-  architecture: standalone
-  auth:
+  haproxy:
+    nameOverride: "redis-proxy"
     enabled: false
 
 redisSidecar:
