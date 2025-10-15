@@ -32,10 +32,14 @@ Usage:
   {{- if $isSelf -}}
     {{- $fullnameOverride = $ctx.Values.fullnameOverride | default "" -}}
     {{- $nameOverride = default $ctx.Chart.Name $ctx.Values.nameOverride -}}
-  {{- else if and (hasKey $ctx.Values "global") (hasKey $ctx.Values.global $chartName)  -}}
+  {{- else if and (hasKey $ctx.Values "global") (hasKey $ctx.Values.global $chartName) -}}
     {{- $gvals := get $ctx.Values.global $chartName | default dict -}}
     {{- $fullnameOverride = get $gvals "fullnameOverride" | default "" -}}
     {{- $nameOverride = get $gvals "nameOverride" | default $chartName -}}
+  {{- else if hasKey $ctx.Values $chartName -}}
+    {{- $subchartVals := get $ctx.Values $chartName | default dict -}}
+    {{- $fullnameOverride = get $subchartVals "fullnameOverride" | default "" -}}
+    {{- $nameOverride = get $subchartVals "nameOverride" | default $chartName -}}
   {{- end -}}
 
   {{- include "common.helpers.names._generateName" (list $ctx.Release.Name $fullnameOverride $nameOverride) -}}
@@ -160,43 +164,6 @@ usage: {{ include "common.helpers.names.podFQDN" (list $ "[chartName]" "[podName
   {{- $fullName := include "common.helpers.names.chartFullname" (list $ctx $chart) -}}
 
   {{- printf "%s-%s.%s" $fullName ($podNameSuffix | toString) $svcFqdn -}}
-{{- end }}
-
-{{/*
-common.helpers.names.subchartSvcName
-
-Returns the generated service name of a subchart component, based on standard Helm naming logic.
-Supports `fullnameOverride`, `nameOverride`, and fallback to `Release.Name`.
-
-Arguments:
-  - . (required): The current Helm context (`.`)
-  - subchart (required): Name of the subchart as a string (e.g., "haproxy", "redis")
-
-Usage:
-  {{ include "common.helpers.names.subchartSvcName" (list . "haproxy") }}
-
-Fails explicitly if the subchart key is not found in .Values.
-*/}}
-{{- define "common.helpers.names.subchartSvcName" -}}
-  {{- $ctx := index . 0 -}}
-  {{- $chart := index . 1 -}}
-
-  {{- if not (hasKey $ctx.Values $chart) -}}
-    {{- fail (printf "subchart key '%s' not found in .Values" $chart) -}}
-  {{- end -}}
-
-  {{- $sub := index $ctx.Values $chart -}}
-
-  {{- if $sub.fullnameOverride -}}
-    {{- $sub.fullnameOverride -}}
-  {{- else -}}
-    {{- $nameOverride := $sub.nameOverride | default $chart -}}
-    {{- if contains $chart $ctx.Release.Name -}}
-      {{- $ctx.Release.Name | trunc 63 | trimSuffix "-" -}}
-    {{- else -}}
-      {{- printf "%s-%s" $ctx.Release.Name $nameOverride | trunc 63 | trimSuffix "-" -}}
-    {{- end -}}
-  {{- end -}}
 {{- end }}
 
 {{/*
@@ -384,7 +351,7 @@ Return service name
 * first param is root, required
 * second param is the name of service, returns modified value if chart has service with same name
 
-usage: {{ include "common.helpers.names.serviceName" ( list $ [name of service] [validate (true/false)]) }}
+usage: {{ include "common.helpers.names.serviceName" ( list $ [name of service] [validate (true/false)] [chart name]) }}
 */}}
 {{- define "common.helpers.names.serviceName" -}}
   {{- $root := index . 0 -}}
@@ -401,10 +368,14 @@ usage: {{ include "common.helpers.names.serviceName" ( list $ [name of service] 
   {{- end -}}
   {{- $fullName := include "common.helpers.names.chartFullname" (list $root $chartName) -}}
   {{- $names := list -}}
-  {{- range $name, $service := $root.Values.service -}}
-    {{- if and (kindIs "map" $service) (gt (len $service) 0) -}}
-      {{- $names = append $names ($service.name | default $name) -}}
+  {{- if eq $root.Chart.Name $chartName -}}
+    {{- range $name, $service := $root.Values.service -}}
+      {{- if and (kindIs "map" $service) (gt (len $service) 0) -}}
+        {{- $names = append $names ($service.name | default $name) -}}
+      {{- end -}}
     {{- end -}}
+  {{- else -}}
+    {{- $ignoreServiceExists = true -}}
   {{- end -}}
   {{- if or (has $name $names) $ignoreServiceExists -}}
     {{- $serviceName := printf "%s-%s" $fullName $name -}}
