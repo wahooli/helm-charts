@@ -364,7 +364,7 @@ configMaps:
   {{- $dnsNames := include "common.helpers.names.DNSNames" . | fromYamlArray -}}
   {{- $clientDnsNames := $dnsNames -}}
   {{- if (.Values.haproxy).enabled -}}
-    {{- $haproxySvcName := include "common.helpers.names.subchartSvcName" (list . "haproxy") -}}
+    {{- $haproxySvcName := include "common.helpers.names.chartFullname" (list . "haproxy") -}}
     {{- $gwNames := (include "common.helpers.names.serviceDNSNames" (list $ $haproxySvcName false)) | fromYamlArray -}}
     {{- $clientDnsNames = concat $clientDnsNames $gwNames -}}
     {{- $clientDnsNames = append $clientDnsNames "localhost" -}}

@@ -28,7 +28,7 @@ sources:
 dependencies:
   - name: common
     repository: "oci://ghcr.io/wahooli/charts"
-    version: ">=0.0.2-17"
+    version: ">=0.0.2-20"
   - name: haproxy
     version: ">=0.0.1-1"
     repository: "oci://ghcr.io/wahooli/charts"

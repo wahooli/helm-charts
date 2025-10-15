@@ -308,6 +308,10 @@ service:
       port: 26379
       serviceOnly: true
       protocol: TCP
+  master:
+    type: ClusterIP
+    publishNotReadyAddresses: true
+    portsFrom: main
 
 persistence:
   data:
