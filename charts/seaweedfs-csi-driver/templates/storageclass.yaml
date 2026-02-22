@@ -1,0 +1,15 @@
+{{- if .Values.storageClass.enabled }}
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: {{ .Values.storageClass.name | default "seaweedfs-storage" }}
+  {{- if .Values.storageClass.isDefault }}
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+  {{- end }}
+provisioner: {{ .Values.storageClass.provisioner | default "seaweedfs-csi-driver" }}
+allowVolumeExpansion: {{ .Values.storageClass.allowVolumeExpansion | default true }}
+volumeBindingMode: {{ .Values.storageClass.volumeBindingMode | default "WaitForFirstConsumer" }}
+{{- include "seaweedfs-csi-driver.storageClassParameters" . -}}
+{{- end }}

@@ -1,0 +1,15 @@
+---
+apiVersion: storage.k8s.io/v1
+kind: CSIDriver
+metadata:
+  name: {{ .Values.storageClass.provisioner }}
+spec:
+  attachRequired: {{.Values.csi.attacher.enabled | default false }}
+  podInfoOnMount: {{ .Values.csi.driver.podInfoOnMount | default true }}
+  {{- with .Values.csi.driver.volumeLifecycleModes }}
+  volumeLifecycleModes:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.csi.driver.storageCapacity }}
+  storageCapacity: {{ . }}
+  {{- end }}

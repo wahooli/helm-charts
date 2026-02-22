@@ -543,6 +543,11 @@ persistence:
     enabled: true
   pgbouncer-configmap:
     enabled: true
+    spec:
+      useFromChart: true
+      configMap:
+        name: pgbouncer-config
+        defaultMode: 0400
 {{- end }}
 {{- if (.Values.metrics).enabled }}
   exporter-config:

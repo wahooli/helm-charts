@@ -1,0 +1,538 @@
+# Default values for seaweedfs-csi-driver.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+seaweedfs:
+  dataLocality: none  # or write_preferLocalDc
+  filerAddress: seaweedfs-filer.seaweedfs.svc.cluster.local:8888
+  # dataCenter:
+
+storageClass:
+  enabled: true
+  name: seaweedfs-storage
+  isDefault: false
+  provisioner: seaweedfs-csi-driver
+  allowVolumeExpansion: true
+  volumeBindingMode: Immediate
+  parameters: {}
+
+csi:
+  driver:
+    podInfoOnMount: true
+
+  attacher:
+    enabled: true
+    image:
+      repository: registry.k8s.io/sig-storage/csi-attacher
+      tag: v4.3.0
+      pullPolicy: IfNotPresent
+
+  resizer:
+    image:
+      repository: registry.k8s.io/sig-storage/csi-resizer
+      tag: v1.8.0
+      pullPolicy: IfNotPresent
+
+  provisioner:
+    image:
+      repository: registry.k8s.io/sig-storage/csi-provisioner
+      tag: v3.5.0
+      pullPolicy: IfNotPresent
+
+  nodeDriverRegistrar:
+    image:
+      repository: registry.k8s.io/sig-storage/csi-node-driver-registrar
+      tag: v2.8.0
+      pullPolicy: IfNotPresent
+
+  livenessProbe:
+    enabled: true
+    image:
+      repository: registry.k8s.io/sig-storage/livenessprobe
+      tag: v2.17.0
+      pullPolicy: IfNotPresent
+
+  mount:
+    image:
+      repository: chrislusf/seaweedfs-mount
+      pullPolicy: IfNotPresent
+      tag: v1.4.2
+
+  snapshotter:
+    enabled: false
+
+rbac:
+  create: true
+
+# This sets the container image more information can be found here: https://kubernetes.io/docs/concepts/containers/images/
+image:
+  repository: chrislusf/seaweedfs-csi-driver
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  # tag: latest
+
+# Base environment variables - propagated to all components unless overridden
+env:
+  NODE_ID:
+    valueFrom:
+      fieldRef:
+        fieldPath: spec.nodeName
+  DRIVER_NAME: |-
+    {{ .Values.storageClass.provisioner }}
+  SEAWEEDFS_FILER: |-
+    {{ .Values.seaweedfs.filerAddress }}
+
+configMaps:
+  shared-config:
+    data:
+      security.toml: |-
+        {{- $.Files.Get "files/security.toml" -}}
+
+tls:
+  enabled: false
+  # existingSecret: ""  # Name of secret containing tls.crt, tls.key, ca.crt (e.g., "seaweedfs-shared" when using seaweedfs chart with cert-manager)
+
+# This is for the secrets for pulling an image from a private repository more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+imagePullSecrets: []
+# This is to override the chart name.
+nameOverride: ""
+fullnameOverride: ""
+
+# This section builds out the service account more information can be found here: https://kubernetes.io/docs/concepts/security/service-accounts/
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Auto-mount API credentials - required for CSI sidecars (provisioner, resizer, attacher) to communicate with K8s API
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+controller:
+  enabled: true
+  replicaCount: 1
+  priorityClassName: system-cluster-critical
+  serviceAccount:
+    automount: true
+  args:
+  - --endpoint=$(CSI_ENDPOINT)
+  - --filer=$(SEAWEEDFS_FILER)
+  - --driverName=$(DRIVER_NAME)
+  - --components=controller
+  - --attacher=true
+  env:
+    CSI_ENDPOINT: unix:///var/lib/csi/sockets/pluginproxy/csi.socks
+  containerName: seaweedfs-csi-plugin
+
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchExpressions:
+          - key: app
+            operator: In
+            values:
+            - seaweedfs-controller
+        topologyKey: kubernetes.io/hostname
+  persistence:
+    socket-dir:
+      spec:
+        emptyDir: {}
+      mount:
+      - path: /var/lib/csi/sockets/pluginproxy/
+
+  resources: {}
+
+  containers:
+    csi-provisioner:
+      args:
+      - --csi-address=$(ADDRESS)
+      - --leader-election
+      - --leader-election-namespace={{ .Release.Namespace }}
+      - --http-endpoint=:9809
+      env:
+        ADDRESS: /var/lib/csi/sockets/pluginproxy/csi.sock
+      ports:
+      - containerPort: 9809
+        name: healthz-prov
+        protocol: TCP
+      livenessProbe:
+        httpGet:
+          path: /healthz/leader-election
+          port: healthz-prov
+        initialDelaySeconds: 10
+        timeoutSeconds: 3
+        periodSeconds: 60
+      volumeMounts:
+      - name: socket-dir
+        mountPath: /var/lib/csi/sockets/pluginproxy/
+      resources: {}
+
+    csi-resizer:
+      args:
+      - --csi-address=$(ADDRESS)
+      - --leader-election
+      - --leader-election-namespace={{ .Release.Namespace }}
+      - --http-endpoint=:9810
+      env:
+        ADDRESS: /var/lib/csi/sockets/pluginproxy/csi.sock
+      ports:
+      - containerPort: 9810
+        name: healthz-resizer
+        protocol: TCP
+      livenessProbe:
+        httpGet:
+          path: /healthz/leader-election
+          port: healthz-resizer
+        initialDelaySeconds: 10
+        timeoutSeconds: 3
+        periodSeconds: 60
+      volumeMounts:
+      - name: socket-dir
+        mountPath: /var/lib/csi/sockets/pluginproxy/
+      resources: {}
+
+    csi-attacher:
+      args:
+      - --csi-address=$(ADDRESS)
+      - --leader-election
+      - --leader-election-namespace={{ .Release.Namespace }}
+      - --http-endpoint=:9811
+      env:
+        ADDRESS: /var/lib/csi/sockets/pluginproxy/csi.sock
+      ports:
+      - containerPort: 9811
+        name: healthz-attach
+        protocol: TCP
+      livenessProbe:
+        httpGet:
+          path: /healthz/leader-election
+          port: healthz-attach
+        initialDelaySeconds: 10
+        timeoutSeconds: 3
+        periodSeconds: 60
+      volumeMounts:
+      - name: socket-dir
+        mountPath: /var/lib/csi/sockets/pluginproxy/
+      resources: {}
+
+    csi-liveness-probe:
+      args:
+      - --csi-address=$(ADDRESS)
+      - --http-endpoint=:9812
+      env:
+        # ADDRESS: /csi/csi.sock
+        ADDRESS: /var/lib/csi/sockets/pluginproxy/csi.sock
+      ports:
+      - containerPort: 9812
+        name: livenessprobe
+        protocol: TCP
+      livenessProbe:
+        httpGet:
+          path: /healthz
+          port: livenessprobe
+        initialDelaySeconds: 10
+        timeoutSeconds: 3
+        periodSeconds: 60
+      volumeMounts:
+      - name: socket-dir
+        mountPath: /var/lib/csi/sockets/pluginproxy/
+      resources: {}
+
+mount:
+  enabled: true
+  workloadType: DaemonSet
+  priorityClassName: system-node-critical
+
+  configMaps:
+    extra-scripts:
+      data:
+        weed-wrapper: |-
+          #!/bin/sh
+          REAL_WEED=/usr/bin/weed
+          # echo "Running command: $REAL_WEED $@ {{ .Values.mountArgs | join " " }}"
+          # Pass all original arguments, then append extra flags
+          exec $REAL_WEED "$@" {{ .Values.mountArgs | join " " }}
+  args:
+  - --endpoint=$(MOUNT_ENDPOINT)
+  - --weedBinary=/usr/local/bin/weed-wrapper
+
+  env:
+    MOUNT_ENDPOINT: "unix:///var/lib/seaweedfs-mount/seaweedfs-mount.sock"
+
+  containerName: seaweedfs-mount
+
+  updateStrategy:
+    type: OnDelete
+
+  securityContext:
+    allowPrivilegeEscalation: true
+    privileged: true
+    capabilities:
+      add:
+      - SYS_ADMIN
+
+  persistence:
+    extra-scripts:
+      enabled: true
+      mount:
+      - path: /usr/local/bin
+      spec:
+        useFromChart: true
+        configMap:
+          name: extra-scripts
+          defaultMode: 0555
+    plugins-dir:
+      spec:
+        hostPath:
+          path: /var/lib/kubelet/plugins
+          type: Directory
+      mount:
+      - path: /var/lib/kubelet/plugins
+        mountPropagation: Bidirectional
+
+    pods-mount-dir:
+      spec:
+        hostPath:
+          path: /var/lib/kubelet/pods
+          type: Directory
+      mount:
+      - path: /var/lib/kubelet/pods
+        mountPropagation: Bidirectional
+
+    device-dir:
+      spec:
+        hostPath:
+          path: /dev
+      mount:
+      - path: /dev
+
+    cache:
+      enabled: true
+      mount:
+      - path: /var/cache/seaweedfs
+
+    mount-socket-dir:
+      spec:
+        hostPath:
+          path: /var/lib/seaweedfs-mount
+          type: DirectoryOrCreate
+      mount:
+      - path: /var/lib/seaweedfs-mount
+
+  resources: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+node:
+  enabled: true
+  serviceAccount:
+    automount: true
+  priorityClassName: system-node-critical
+  args:
+  - --endpoint=$(CSI_ENDPOINT)
+  - --filer=$(SEAWEEDFS_FILER)
+  - --nodeid=$(NODE_ID)
+  - --driverName=$(DRIVER_NAME)
+  - --mountEndpoint=$(MOUNT_ENDPOINT)
+  - --cacheDir=/var/cache/seaweedfs
+  - --components=node
+  - --logtostderr
+
+  env:
+    CSI_ENDPOINT: unix:///csi/csi.sock
+    MOUNT_ENDPOINT: "unix:///var/lib/seaweedfs-mount/seaweedfs-mount.sock"
+
+  containerName: csi-seaweedfs-plugin
+
+  securityContext:
+    allowPrivilegeEscalation: true
+    privileged: true
+    capabilities:
+      add:
+      - SYS_ADMIN
+
+  persistence:
+    registration-dir:
+      spec:
+        hostPath:
+          path: /var/lib/kubelet/plugins_registry
+          type: DirectoryOrCreate
+
+    plugin-dir:
+      spec:
+        hostPath:
+          path: /var/lib/kubelet/plugins/seaweedfs-csi-driver
+          type: DirectoryOrCreate
+      mount:
+      - path: /csi
+
+    plugins-dir:
+      spec:
+        hostPath:
+          path: /var/lib/kubelet/plugins
+          type: Directory
+      mount:
+      - path: /var/lib/kubelet/plugins
+        mountPropagation: Bidirectional
+    mount-socket-dir:
+      spec:
+        hostPath:
+          path: /var/lib/seaweedfs-mount
+          type: DirectoryOrCreate
+      mount:
+      - path: /var/lib/seaweedfs-mount
+    pods-mount-dir:
+      spec:
+        hostPath:
+          path: /var/lib/kubelet/pods
+          type: Directory
+      mount:
+      - path: /var/lib/kubelet/pods
+        mountPropagation: Bidirectional
+
+    device-dir:
+      spec:
+        hostPath:
+          path: /dev
+      mount:
+      - path: /dev
+
+    cache:
+      enabled: true
+      mount:
+      - path: /var/cache/seaweedfs
+
+  resources: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+  containers:
+    driver-registrar:
+      args:
+      - --csi-address=$(ADDRESS)
+      - --kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)
+      - --http-endpoint=:9809
+      env:
+        ADDRESS: /csi/csi.sock
+        DRIVER_REG_SOCK_PATH: /var/lib/kubelet/plugins/seaweedfs-csi-driver/csi.sock
+        KUBE_NODE_NAME:
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+      ports:
+      - containerPort: 9809
+        name: healthz-reg
+        protocol: TCP
+      livenessProbe:
+        httpGet:
+          path: /healthz
+          port: 9809
+        initialDelaySeconds: 10
+        timeoutSeconds: 3
+        periodSeconds: 60
+      volumeMounts:
+      - name: plugin-dir
+        mountPath: /csi/
+      - name: registration-dir
+        mountPath: /registration/
+      resources: {}
+
+    csi-liveness-probe:
+      args:
+      - --csi-address=$(ADDRESS)
+      - --http-endpoint=:9812
+      env:
+        ADDRESS: /csi/csi.sock
+      ports:
+      - containerPort: 9812
+        name: livenessprobe
+        protocol: TCP
+      livenessProbe:
+        httpGet:
+          path: /healthz
+          port: livenessprobe
+        initialDelaySeconds: 10
+        periodSeconds: 60
+        timeoutSeconds: 3
+      volumeMounts:
+      - name: plugin-dir
+        mountPath: /csi
+      resources: {}
+
+nodeGc:
+  enabled: false
+  workloadType: DaemonSet
+  serviceAccount:
+    automount: false
+  priorityClassName: system-node-critical
+  image:
+    repository: ghcr.io/wahooli/docker/kubectl
+    tag: latest
+    pullPolicy: IfNotPresent
+  env:
+    LOG_LEVEL: info
+  command:
+  - /config/gc.sh
+  configMaps:
+    entrypoint:
+      data:
+        gc.sh: |-
+          {{- $.Files.Get "files/gc.sh" -}}
+  podSecurityContext:
+    runAsUser: 0
+    runAsGroup: 0
+    seccompProfile:
+      type: RuntimeDefault
+  securityContext:
+    readOnlyRootFilesystem: true
+    runAsUser: 0
+    runAsGroup: 0
+    privileged: true
+    capabilities:
+      drop:
+      - ALL
+  hostNetwork: false
+  persistence:
+    gc-script:
+      enabled: true
+      mount:
+      - path: /config
+      spec:
+        useFromChart: true
+        configMap:
+          name: entrypoint
+          defaultMode: 0555
+    plugins-dir:
+      spec:
+        hostPath:
+          path: /var/lib/kubelet/plugins
+          type: Directory
+      mount:
+      - path: /var/lib/kubelet/plugins
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "64Mi"
+    limits:
+      cpu: "200m"
+      memory: "128Mi"
+  tolerations:
+  - key: node.kubernetes.io/memory-pressure
+    operator: Exists
+    effect: NoSchedule
+  - key: node.kubernetes.io/disk-pressure
+    operator: Exists
+    effect: NoSchedule
+  - key: node.kubernetes.io/pid-pressure
+    operator: Exists
+    effect: NoSchedule
+  - key: node.kubernetes.io/unreachable
+    operator: Exists
+    effect: NoExecute
+  - key: node.kubernetes.io/not-ready
+    operator: Exists
+    effect: NoExecute

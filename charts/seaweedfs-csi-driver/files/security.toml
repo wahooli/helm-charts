@@ -1,0 +1,105 @@
+# comma separated origins allowed to make requests to the filer and s3 gateway.
+# enter in this format: https://domain.com, or http://localhost:port
+[cors.allowed_origins]
+values = "*"
+
+# by default, if the signing key above is set, the Volume UI over HTTP is disabled.
+# by setting ui.access to true, you can re-enable the Volume UI. Despite
+# some information leakage (as the UI is not authenticated), this should not
+# pose a security risk.
+[access]
+ui = true
+
+# by default the filer UI is enabled. This can be a security risk if the filer is exposed to the public
+# and the JWT for reads is not set. If you don't want the public to have access to the objects in your
+# storage, and you haven't set the JWT for reads it is wise to disable access to directory metadata.
+# This disables access to the Filer UI, and will no longer return directory metadata in GET requests.
+[filer.expose_directory_metadata]
+enabled = true
+
+# all grpc tls authentications are mutual
+# the values for the following ca, cert, and key are paths to the PERM files.
+# the host name is not checked, so the PERM files can be shared.
+[grpc]
+ca = "/certs/ca.crt"
+# Set wildcard domain for enable TLS authentication by common names
+allowed_wildcard_domain = ".cluster.local" # .mycompany.com
+
+[grpc.volume]
+cert = "/certs/tls.crt"
+key  = "/certs/tls.key"
+# allowed_commonNames = ""    # comma-separated SSL certificate common names
+
+[grpc.master]
+cert = "/certs/tls.crt"
+key  = "/certs/tls.key"
+# allowed_commonNames = ""    # comma-separated SSL certificate common names
+
+[grpc.filer]
+cert = "/certs/tls.crt"
+key  = "/certs/tls.key"
+# allowed_commonNames = ""    # comma-separated SSL certificate common names
+
+[grpc.s3]
+cert = "/certs/tls.crt"
+key  = "/certs/tls.key"
+# allowed_commonNames = ""    # comma-separated SSL certificate common names
+
+[grpc.msg_broker]
+cert = "/certs/tls.crt"
+key  = "/certs/tls.key"
+# allowed_commonNames = ""    # comma-separated SSL certificate common names
+
+[grpc.msg_agent]
+cert = "/certs/tls.crt"
+key  = "/certs/tls.key"
+# allowed_commonNames = ""    # comma-separated SSL certificate common names
+
+[grpc.admin]
+cert = "/certs/tls.crt"
+key  = "/certs/tls.key"
+# allowed_commonNames = ""    # comma-separated SSL certificate common names
+
+[grpc.worker]
+cert = "/certs/tls.crt"
+key  = "/certs/tls.key"
+# allowed_commonNames = ""    # comma-separated SSL certificate common names
+
+# use this for any place needs a grpc client
+# i.e., "weed backup|benchmark|filer.copy|filer.replicate|mount|s3|upload"
+[grpc.client]
+cert = "/certs/tls.crt"
+key  = "/certs/tls.key"
+
+# https client for master|volume|filer|etc connection
+# It is necessary that the parameters  [https.volume]|[https.master]|[https.filer]|[https.admin] are set
+[https.client]
+enabled = true
+cert = "/certs/tls.crt"
+key  = "/certs/tls.key"
+ca = "/certs/ca.crt"
+
+# volume server https options
+[https.volume]
+cert = "/certs/tls.crt"
+key  = "/certs/tls.key"
+ca = "/certs/ca.crt"
+
+# master server https options
+[https.master]
+cert = "/certs/tls.crt"
+key  = "/certs/tls.key"
+ca = "/certs/ca.crt"
+
+# filer server https options
+[https.filer]
+cert = "/certs/tls.crt"
+key  = "/certs/tls.key"
+ca = "/certs/ca.crt"
+# disable_tls_verify_client_cert = true|false (default: false)
+
+# admin server https options
+[https.admin]
+cert = "/certs/tls.crt"
+key  = "/certs/tls.key"
+ca = "/certs/ca.crt"

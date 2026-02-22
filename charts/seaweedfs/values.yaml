@@ -1,0 +1,523 @@
+# Default values for seaweedfs.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# global:
+#   seaweedfs:
+#     cluster:
+#       ordinals:
+#         start: 0
+#       replicaCount: 2
+# This will set the replicaset count more information can be found here: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
+
+# ordinals:
+#   start: 1
+
+# cluster:
+#   ordinals:
+#     start: 0
+#   replicaCount: 2
+
+workloadType: StatefulSet  # do not change
+
+# This sets the container image more information can be found here: https://kubernetes.io/docs/concepts/containers/images/
+image:
+  repository: chrislusf/seaweedfs
+  # This sets the pull policy for images.
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+
+env:
+  POD_NAME:
+    valueFrom:
+      fieldRef:
+        fieldPath: metadata.name
+  POD_IP:
+    valueFrom:
+      fieldRef:
+        fieldPath: status.podIP
+  SERVICE_FQDN:
+    valueFrom:
+      fieldRef:
+        fieldPath: metadata.annotations['serviceFQDN']
+  POD_FQDN: $(POD_NAME).$(SERVICE_FQDN)
+  POD_NAMESPACE:
+    valueFrom:
+      fieldRef:
+        fieldPath: metadata.namespace
+
+configMaps:
+  shared-config:
+    data:
+      security.toml: |-
+        {{- $.Files.Get "files/security.toml" -}}
+
+# dataCenter: dc1
+# rack: rack1
+defaultReplication: "000"
+sharedArgs:
+- -ip=$(POD_FQDN)
+- -ip.bind=0.0.0.0
+- -metricsPort=9325
+
+tls:
+  enabled: false
+  generateCertificates: false
+  # existingSecret: # has to contain tls.crt, tls.key and ca.crt keys
+  # issuerRef:
+  #   name: selfsigned
+  #   kind: ClusterIssuer
+
+# This is for the secrets for pulling an image from a private repository more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+imagePullSecrets: []
+# This is to override the chart name.
+nameOverride: ""
+fullnameOverride: ""
+
+
+# This section builds out the service account more information can be found here: https://kubernetes.io/docs/concepts/security/service-accounts/
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # false mount a ServiceAccount's API credentials?
+  automount: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+master:
+  enabled: true
+  replicaCount: 1
+  podAnnotations: {}
+  podLabels: {}
+  podSecurityContext: {}
+  securityContext: {}
+  command:
+  - /usr/bin/weed
+  - -logtostderr=true
+  - -config_dir=/etc/seaweedfs
+  - master
+  args:
+  - -mdir=/data
+  # - -volumePreallocate
+  - -volumeSizeLimitMB=30000
+  service:
+    main:
+      type: ClusterIP
+      clusterIP: None
+      publishNotReadyAddresses: true
+      ports:
+      - name: http
+        port: 9333
+        protocol: TCP
+      - name: grpc
+        port: 19333
+        protocol: TCP
+  persistence:
+    data:
+      enabled: true
+      mount:
+      - path: /data
+
+  resources: {}
+  probe:
+    liveness:
+      # enabled: true
+      initialDelaySeconds: 15
+      periodSeconds: 30
+      timeoutSeconds: 10
+      successThreshold: 1
+      failureThreshold: 3
+      httpGet:
+        path: /cluster/status
+        port: 9333
+        scheme: HTTP
+    readiness:
+      # enabled: true
+      initialDelaySeconds: 10
+      periodSeconds: 15
+      timeoutSeconds: 10
+      successThreshold: 1
+      failureThreshold: 3
+      httpGet:
+        path: /cluster/status
+        port: 9333
+        scheme: HTTP
+    startup:
+      enabled: false
+  ingress:
+    main:
+      enabled: false
+      className: ""
+      annotations: {}
+      hosts:
+      - host: master.chart.example.local
+        paths:
+        - path: /
+          pathType: Prefix
+        servicePort: 9333
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+filer:
+  enabled: true
+  replicaCount: 1
+  podAnnotations: {}
+  podLabels: {}
+  podSecurityContext: {}
+  securityContext: {}
+  podManagementPolicy: Parallel
+  command:
+  - /usr/bin/weed
+  - -logtostderr=true
+  - -config_dir=/etc/seaweedfs
+  - filer
+  args:
+  - -dirListLimit=100000
+  service:
+    main:
+      type: ClusterIP
+      clusterIP: None
+      publishNotReadyAddresses: true
+      ports:
+      - name: http
+        port: 8888
+        protocol: TCP
+      - name: grpc
+        port: 18888
+        protocol: TCP
+      - name: readonly
+        port: 28888
+        protocol: TCP
+      - name: s3
+        port: 8333
+        protocol: TCP
+    lb:
+      type: ClusterIP
+      portsFrom: main
+  ingress:
+    main:
+      enabled: false
+      className: ""
+      annotations: {}
+      targetSelector:
+        lb: http
+      hosts:
+      - host: filer.chart.example.local
+        paths:
+        - path: /
+          pathType: Prefix
+        servicePort: 8888
+  persistence:
+    data:
+      enabled: true
+      mount:
+      - path: /data
+  resources: {}
+  probe:
+    liveness:
+      # enabled: false
+      initialDelaySeconds: 15
+      periodSeconds: 30
+      timeoutSeconds: 10
+      successThreshold: 1
+      failureThreshold: 3
+      httpGet:
+        path: /
+        port: 8888
+        scheme: HTTP
+    readiness:
+      # enabled: false
+      initialDelaySeconds: 10
+      periodSeconds: 15
+      timeoutSeconds: 10
+      successThreshold: 1
+      failureThreshold: 3
+      httpGet:
+        path: /
+        port: 8888
+        scheme: HTTP
+    startup:
+      enabled: false
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+volume:
+  enabled: true
+  replicaCount: 1
+  podAnnotations: {}
+  podLabels: {}
+  podSecurityContext: {}
+  securityContext: {}
+  command:
+  - /usr/bin/weed
+  - -logtostderr=true
+  - -config_dir=/etc/seaweedfs
+  - volume
+  args:
+  - -dir=/data
+  - -max=0
+  - -compactionMBps=50
+  - -readMode=proxy
+  - -publicUrl=$(POD_FQDN)
+  - -minFreeSpacePercent=7
+  service:
+    main:
+      type: ClusterIP
+      clusterIP: None
+      publishNotReadyAddresses: true
+      ports:
+      - name: http
+        port: 8080
+        protocol: TCP
+      - name: grpc
+        port: 18080
+        protocol: TCP
+  persistence:
+    data:
+      enabled: true
+      mount:
+      - path: /data
+
+  resources: {}
+  probe:
+    liveness:
+      # enabled: false
+      initialDelaySeconds: 15
+      periodSeconds: 30
+      timeoutSeconds: 10
+      successThreshold: 1
+      failureThreshold: 3
+      httpGet:
+        path: /status
+        port: 8080
+        scheme: HTTP
+    readiness:
+      # enabled: false
+      initialDelaySeconds: 10
+      periodSeconds: 15
+      timeoutSeconds: 10
+      successThreshold: 1
+      failureThreshold: 3
+      httpGet:
+        path: /status
+        port: 8080
+        scheme: HTTP
+    startup:
+      enabled: false
+  ingress:
+    main:
+      enabled: false
+      className: ""
+      annotations: {}
+      hosts:
+      - host: volume.chart.example.local
+        paths:
+        - path: /
+          pathType: Prefix
+        servicePort: 8080
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+filerSync:
+  # example:
+  #   enabled: true
+  # secondexample:
+  #   name: second-example
+  #   enabled: true
+  __base__:  # base values for all filerSyncs
+    workloadType: Deployment
+    containerName: filer-sync
+    replicaCount: 1
+    podAnnotations: {}
+    podLabels: {}
+    podSecurityContext: {}
+    securityContext: {}
+    command:
+    - /usr/bin/weed
+    - -logtostderr=true
+    - -config_dir=/etc/seaweedfs/
+    - filer.sync
+    # env:
+    #   # SOURCE_FILER is set automatically to the filer lb service FQDN if not overridden
+    #   # SOURCE_FILER: seaweedfs-filer-lb.$(POD_NAMESPACE).svc.cluster.local:8888
+    #   TARGET_FILER: "remote-filer:8888"
+    # args:
+    # - -a.filerProxy
+    # For cross-cluster replication, use filerProxy to route through filer
+    # instead of directly accessing volume servers (needed when volume IPs not accessible):
+    # - -a.filerProxy
+    # - -b.filerProxy
+    # For active-passive (one-way) instead of active-active:
+    # - -isActivePassive
+    # For debugging:
+    # - -a.debug
+    # - -b.debug
+    service:
+      main:
+        enabled: false
+    persistence: {}
+
+    resources: {}
+    probe:
+      liveness:
+        enabled: false
+      readiness:
+        enabled: false
+      startup:
+        enabled: false
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+
+resticBackup:
+  enabled: false
+  restartPolicy: Never
+  schedule: "0 * * * *"
+  failedJobsHistoryLimit: 2
+  successfulJobsHistoryLimit: 1
+  restoreHook:
+    backoffLimit: 1
+    enabled: false
+    deletePolicy: before-hook-creation,hook-succeeded
+
+  retentionPolicy:
+    keepLast: 4
+    keepDaily: 7
+    keepWeekly: 4
+    keepMonthly: 6
+  configMaps:
+    entrypoint:
+      data:
+        backup.sh: |-
+          {{- $.Files.Get "files/restic-backup.sh" -}}
+
+  image:
+    repository: ghcr.io/restic/restic
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  initContainers:
+    seaweedfsBinary:
+      name: copy-weed-bin
+      # image:
+      #   repository: chrislusf/seaweedfs
+      #   tag: latest
+      #   pullPolicy: IfNotPresent
+      command:
+      - cp
+      - /usr/bin/weed
+      - /shared/weed
+      volumeMounts:
+      - name: weed-binary
+        mountPath: /shared
+      securityContext:
+        allowPrivilegeEscalation: false
+        privileged: false
+    wait-for-filer:
+      enabled: false
+      image: ghcr.io/wahooli/docker/wait-for-it:latest
+      imagePullPolicy: IfNotPresent
+      args:
+      - $(SEAWEEDFS_FILER)
+      - -t
+      - "300"  # wait for 5 minutes
+    wait-for-master:
+      enabled: false
+      image: ghcr.io/wahooli/docker/wait-for-it:latest
+      imagePullPolicy: IfNotPresent
+      args:
+      - $(SEAWEEDFS_MASTER)
+      - -t
+      - "300"  # wait for 5 minutes
+  # envFrom:
+  #   backup-credentials:
+  #     type: secret
+  #     name: restic-backup-credentials
+  env:
+    NICE: "20"
+    IONICE_CLASS: "2"
+    IONICE_PRIORITY: "7"
+    # OPERATION: "wait" # or "restore"
+    # SEAWEEDFS_FILER: "seaweedfs-filer-lb.seaweedfs.svc.cluster.local:8888"
+    # SEAWEEDFS_MASTER: "seaweedfs-master.seaweedfs.svc.cluster.local:9333"
+
+  command:
+  - /backup.sh
+  securityContext:
+    privileged: true
+    capabilities:
+      drop:
+      - ALL
+      add:
+      - SYS_ADMIN
+    seccompProfile:
+      type: RuntimeDefault
+
+  persistence:
+    weed-binary:
+      enabled: true
+      spec:
+        emptyDir: {}
+      mount:
+      - path: /shared
+    backup-script:
+      enabled: true
+      mount:
+      - path: /backup.sh
+        subPath: backup.sh
+      spec:
+        useFromChart: true
+        configMap:
+          name: entrypoint
+          defaultMode: 0555
+
+postUp:
+  enabled: false
+  restartPolicy: Never
+  backoffLimit: 3
+  deletePolicy: before-hook-creation,hook-succeeded
+  hookWeight: "50"
+  configMaps:
+    entrypoint:
+      data:
+        post-up.sh: |-
+          {{- $.Files.Get "files/post-up.sh" -}}
+  command:
+  - /post-up.sh
+  service:
+    main:
+      enabled: false
+  probe:
+    liveness:
+      enabled: false
+    readiness:
+      enabled: false
+    startup:
+      enabled: false
+  persistence:
+    post-up-script:
+      enabled: true
+      mount:
+      - path: /post-up.sh
+        subPath: post-up.sh
+      spec:
+        useFromChart: true
+        configMap:
+          name: entrypoint
+          defaultMode: 0555
+  collections: []
+  # - name: example
+  #   replication: "000"
