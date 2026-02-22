@@ -7,6 +7,7 @@
     {{- include "common.deployment" . | nindent 0 }}
   {{- else if eq $workload "StatefulSet" }}
     {{- include "common.statefulset" . | nindent 0 }}
+  {{- else if eq $workload "DaemonSet" }}
+    {{- include "common.daemonset" . | nindent 0 }}
   {{- end -}}
-
 {{- end -}}

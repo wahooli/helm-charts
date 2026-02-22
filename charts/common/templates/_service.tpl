@@ -19,7 +19,8 @@
       {{- if and $createHeadlessCopy (eq "None" ($service.clusterIP)) -}}
         {{- $createHeadlessCopy = false -}}
       {{- end -}}
-      {{- $serviceSpec := omit $service "createHeadless" "annotations" "name" "labels" "ports" "enabled" "isStsService" "portsFrom" -}}
+      {{- $omitSelector := hasKey $service "omitSelector" | ternary $service.omitSelector false -}}
+      {{- $serviceSpec := omit $service "createHeadless" "annotations" "name" "labels" "ports" "enabled" "isStsService" "portsFrom" "omitSelector" -}}
       {{- $servicePorts := $service.ports -}}
       {{- if $service.portsFrom -}}
         {{- $servicePorts = (index $services $service.portsFrom).ports -}}
@@ -32,7 +33,9 @@
       {{- end -}}
       {{- $serviceLabels := merge $commonLabels ($service.labels | default dict) -}}
 
-      {{- $serviceSpec = merge (dict "selector" $selectorLabels) $serviceSpec -}}
+      {{- if not $omitSelector }}
+        {{- $serviceSpec = merge (dict "selector" $selectorLabels) $serviceSpec -}}
+      {{- end }}
       {{- $headlessSpec := omit $serviceSpec "type" "clusterIP" -}}
       {{- $serviceName := (include "common.helpers.names.serviceName" ( list $ ($service.name | default $name))) -}}
       {{- if $createService }}

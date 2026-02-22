@@ -33,7 +33,7 @@ Get global or local value.
 Prioritizes the global value over the local one.
 Emits failure by default if value not found, but can be overridden with last parameter
 
-usage: {{ include "common.helpers.variables.get" ( list $ [wanted value path] [optional chart name] [quiet (default false)] ) }}
+usage: {{ include "common.helpers.variables.get" ( list $z [wanted value path] [optional chart name] [quiet (default false)] ) }}
 examples:
   - {{ include "common.helpers.variables.get" (list $ "someValue") }}
   - {{ include "common.helpers.variables.get" (list $ "some.nested.value") }}
@@ -42,7 +42,7 @@ examples:
 {{- define "common.helpers.variables.get" -}}
   {{- $root := index . 0 -}}
   {{- $wantedValuePath := index . 1 -}}
-  {{- $chartName := $root.Chart.Name -}}
+  {{- $chartName := include "common.helpers.variables.getField" (list $root.Chart "Name") -}}
   {{- $quiet := false -}}
   {{- if ge (len .) 3 -}}
     {{- $chartName = index . 2 -}}
@@ -67,7 +67,7 @@ examples:
       {{- tpl $localResult.value $root -}}
     {{- else if not $quiet -}}
       {{- $failMsg := printf "Required value not found at .Values.%s or .Values.global.%s.%s" $wantedValuePath $chartName $wantedValuePath -}}
-      {{- if ne $root.Chart.Name $chartName -}}
+      {{- if ne (include "common.helpers.variables.getField" (list $root.Chart "Name")) $chartName -}}
         {{- $failMsg = printf "Required value not found at .Values.global.%s.%s" $chartName $wantedValuePath -}}
       {{- end -}}
       {{- fail $failMsg -}}
@@ -89,7 +89,7 @@ examples:
 {{- define "common.helpers.variables.getTpl" -}}
   {{- $root := index . 0 -}}
   {{- $wantedValuePath := index . 1 -}}
-  {{- $chartName := $root.Chart.Name -}}
+  {{- $chartName := include "common.helpers.variables.getField" (list $root.Chart "Name") -}}
   {{- $quiet := false -}}
   {{- if ge (len .) 3 -}}
     {{- $chartName = index . 2 -}}
@@ -98,4 +98,59 @@ examples:
     {{- $quiet = index . 3 -}}
   {{- end -}}
   {{- tpl (include "common.helpers.variables.getTpl" (list $root $wantedValuePath $chartName $quiet)) $root -}}
+{{- end }}
+
+{{/*
+common.helpers.getField - Get a field from an object, with camelCase fallback
+
+Arguments:
+  - object: the object to get field from
+  - fieldName: the field name to search for
+
+Returns the value, trying:
+  1. Original fieldName
+  2. camelCase (lowercase first letter)
+*/}}
+{{- define "common.helpers.variables.getField" -}}
+{{- $obj := index . 0 -}}
+{{- $field := index . 1 -}}
+{{- $isMap := kindIs "map" $obj -}}
+{{- if not $isMap -}}
+  {{- $obj = $obj | toYaml | fromYaml -}}
+{{- end -}}
+{{- if not (hasKey $obj $field) -}}
+  {{- $field = printf "%s%s" ($field | substr 0 1 | lower) ($field | substr 1 -1) -}}
+{{- end -}}
+{{- if hasKey $obj $field -}}
+  {{- index $obj $field -}}
+{{- end -}}
+{{- end }}
+
+{{/*
+common.helpers.variables.kubeVersion - Get Kubernetes version string safely for semver comparison
+
+Handles:
+  - .Capabilities.KubeVersion.GitVersion (normal context)
+  - .Capabilities.KubeVersion.Version (serialized context)
+  - Strips build metadata (e.g., +k3s1) for reliable semverCompare
+*/}}
+{{- define "common.helpers.variables.kubeVersion" -}}
+{{- $kube := .Capabilities.KubeVersion -}}
+{{- if not (kindIs "map" $kube) -}}
+  {{- $kube = $kube | toYaml | fromYaml -}}
+{{- end -}}
+{{- $version := "" -}}
+{{- if hasKey $kube "GitVersion" -}}
+  {{- $version = $kube.GitVersion -}}
+{{- else if hasKey $kube "Version" -}}
+  {{- $version = $kube.Version -}}
+{{- else -}}
+  {{- $version = printf "v%s.%s.0" $kube.Major $kube.Minor -}}
+{{- end -}}
+{{- $version = $version | trimPrefix "v" -}}
+{{- if contains "+" $version -}}
+  {{- $parts := splitList "+" $version -}}
+  {{- $version = index $parts 0 -}}
+{{- end -}}
+{{- printf "v%s" $version -}}
 {{- end }}

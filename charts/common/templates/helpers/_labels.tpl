@@ -13,10 +13,11 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 
 {{/* Common labels */}}
 {{- define "common.helpers.labels" -}}
+{{- $appVersion := include "common.helpers.variables.getField" (list .Chart "AppVersion") -}}
 helm.sh/chart: {{ include "common.helpers.names.chart" . }}
 {{ include "common.helpers.labels.selectorLabels" . }}
-  {{- if .Chart.AppVersion }}
-app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+  {{- if $appVersion }}
+app.kubernetes.io/version: {{ $appVersion | quote }}
   {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
   {{- with (.Values.global).labels }}

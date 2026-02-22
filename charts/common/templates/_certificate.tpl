@@ -1,5 +1,5 @@
 {{- define "common.certificate" }}
-  {{- if (.Capabilities.APIVersions.Has "cert-manager.io/v1") -}}
+  {{- if .Capabilities.APIVersions.Has "cert-manager.io/v1" -}}
     {{- $fullName := include "common.helpers.names.fullname" . -}}
     {{- $commonLabels := (include "common.helpers.labels" .) | fromYaml -}}
     {{- $namespace := .Release.Namespace | default "default" -}}

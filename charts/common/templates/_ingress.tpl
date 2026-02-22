@@ -4,7 +4,7 @@
   {{- $fullName := include "common.helpers.names.fullname" . -}}
   {{- $commonLabels := include "common.helpers.labels" . -}}
   {{- $services := .Values.service -}}
-  {{- $kubeVersion := .Capabilities.KubeVersion.GitVersion -}}
+  {{- $kubeVersion := include "common.helpers.variables.kubeVersion" . -}}
   {{- $apiVersion := "extensions/v1beta1" -}}
   {{- if semverCompare ">=1.19-0" $kubeVersion -}}
     {{- $apiVersion = "networking.k8s.io/v1" -}}
@@ -34,13 +34,16 @@
         {{- if ($service).name -}}
           {{- $serviceName = printf "%s-%s" $fullName $service.name -}}
         {{- end -}}
+        {{- if ($service).portsFrom -}}
+          {{- $_ := set $service "ports" (index $services ($service).portsFrom).ports -}}
+        {{- end -}}
         {{- if and ($service).ports (not $defaultPort) -}}
           {{- range $_, $port := $service.ports -}}
             {{- if eq $port.name $portName -}}
               {{- $defaultPort = $port.containerPort | default $port.port -}}
             {{- end -}}
           {{- end -}}
-        {{- else -}}
+        {{- else if not (hasKey $service "ports") -}}
           {{- fail (printf ".Values.service.%s.ports undefined!" $serviceKey) -}}
         {{- end -}}
       {{- else -}}

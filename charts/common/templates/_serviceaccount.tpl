@@ -10,6 +10,10 @@ metadata:
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
-automountServiceAccountToken: {{ (.Values.serviceAccount).automount | default true }}
+automountServiceAccountToken: {{ hasKey .Values.serviceAccount "automount" | ternary .Values.serviceAccount.automount true }}
+{{- if .Values.imagePullSecrets }}
+imagePullSecrets:
+  {{- toYaml .Values.imagePullSecrets | nindent 0 }}
+{{- end }}
   {{- end }}
 {{- end }}

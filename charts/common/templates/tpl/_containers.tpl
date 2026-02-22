@@ -1,7 +1,7 @@
 {{- define "common.tpl.containers" -}}
   {{- $containers := merge (.Values.containers | default dict) (dict "main" dict) -}}
   {{- /* append sidecars into containers, if kubernetes version is less than 1.29.0 */ -}}
-  {{- if semverCompare "<1.29-0" .Capabilities.KubeVersion.GitVersion -}}
+  {{- if semverCompare "<1.29-0" (include "common.helpers.variables.kubeVersion" .) -}}
     {{- range $name, $sidecar := .Values.sidecars -}}
       {{- $_ := (dict $name (merge $sidecar (dict "name" $name))) | merge $containers -}}
     {{- end -}}
@@ -9,7 +9,8 @@
   {{- if not $containers.main.name -}}
     {{- $_ := set $containers.main "name" (include "common.helpers.names.container" .) -}}
   {{- end -}}
-  {{- $mainImage := dict "repository" .Values.image.repository "tag" (.Values.image.tag | default .Chart.AppVersion) "pullPolicy" (.Values.image.pullPolicy | default "IfNotPresent") -}}
+  {{- $chartAppVersion := include "common.helpers.variables.getField" (list .Chart "AppVersion") -}}
+  {{- $mainImage := dict "repository" .Values.image.repository "tag" (.Values.image.tag | default $chartAppVersion) "pullPolicy" (.Values.image.pullPolicy | default "IfNotPresent") -}}
   {{- if .Values.image.digest -}}
     {{- $_ := set $mainImage "digest" .Values.image.digest -}}
   {{- end -}}
@@ -135,7 +136,7 @@ usage: {{ include "common.tpl.container" (list $ [container spec] [bool: is main
     {{- toYaml . | nindent 4 -}}
     {{- end -}}
   {{- end }}
-  {{- if $isMain -}}
+  {{- if and $isMain (not (hasKey $container "ports")) -}}
     {{- include "common.tpl.ports.container" $root | nindent 2 }}
   {{- else -}}
     {{- with $container.ports }}
@@ -172,7 +173,7 @@ usage: {{ include "common.tpl.container" (list $ [container spec] [bool: is main
   {{- $initContainers := .Values.initContainers | default dict -}}
 
   {{- /* use native sidecar implementation if version is equal or above 1.29.0 */ -}}
-  {{- if semverCompare ">=1.29-0" .Capabilities.KubeVersion.GitVersion -}}
+  {{- if semverCompare ">=1.29-0" (include "common.helpers.variables.kubeVersion" .) -}}
     {{- range $name, $sidecar := .Values.sidecars -}}
       {{- $_ := set $sidecar "restartPolicy" "Always" -}}
       {{- $_ := (dict $name (merge $sidecar (dict "name" $name))) | merge $initContainers -}}

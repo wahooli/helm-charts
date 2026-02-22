@@ -4,7 +4,8 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 If release name contains chart name it will be used as a full name.
 */}}
 {{- define "common.helpers.names.fullname" -}}
-  {{- include "common.helpers.names.chartFullname" (list $ .Chart.Name) -}}
+  {{- $chartName := include "common.helpers.variables.getField" (list .Chart "Name") -}}
+  {{- include "common.helpers.names.chartFullname" (list . $chartName) -}}
 {{- end }}
 
 {{/*
@@ -24,14 +25,15 @@ Usage:
 {{- define "common.helpers.names.chartFullname" -}}
   {{- $ctx := index . 0 -}}
   {{- $chartName := index . 1 -}}
-  {{- $isSelf := eq $chartName $ctx.Chart.Name -}}
+  {{- $ctxChartName := include "common.helpers.variables.getField" (list $ctx.Chart "Name") -}}
+  {{- $isSelf := eq $chartName $ctxChartName -}}
 
   {{- $fullnameOverride := "" -}}
   {{- $nameOverride := "" -}}
 
   {{- if $isSelf -}}
     {{- $fullnameOverride = $ctx.Values.fullnameOverride | default "" -}}
-    {{- $nameOverride = default $ctx.Chart.Name $ctx.Values.nameOverride -}}
+    {{- $nameOverride = default $ctxChartName $ctx.Values.nameOverride -}}
   {{- else if and (hasKey $ctx.Values "global") (hasKey $ctx.Values.global $chartName) -}}
     {{- $gvals := get $ctx.Values.global $chartName | default dict -}}
     {{- $fullnameOverride = get $gvals "fullnameOverride" | default "" -}}
@@ -64,6 +66,8 @@ Arguments:
     {{- $fullnameOverride | trunc 63 | trimSuffix "-" }}
   {{- else if contains $nameOverride $releaseName }}
     {{- $releaseName | trunc 63 | trimSuffix "-" }}
+  {{- else if hasPrefix (printf "%s-" $releaseName) $nameOverride }}
+    {{- $nameOverride | trunc 63 | trimSuffix "-" }}
   {{- else }}
     {{- printf "%s-%s" $releaseName $nameOverride | trunc 63 | trimSuffix "-" }}
   {{- end }}
@@ -73,21 +77,25 @@ Arguments:
 Expand the name of the chart.
 */}}
 {{- define "common.helpers.name" -}}
-  {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" -}}
+  {{- $chartName := include "common.helpers.variables.getField" (list .Chart "Name") -}}
+  {{- default $chartName .Values.nameOverride | trunc 63 | trimSuffix "-" -}}
 {{- end }}
 
 {{/*
 Expand the name of the chart.
 */}}
 {{- define "common.helpers.names.container" -}}
-  {{- default .Chart.Name .Values.containerName -}}
+  {{- $chartName := include "common.helpers.variables.getField" (list .Chart "Name") -}}
+  {{- default $chartName .Values.containerName -}}
 {{- end }}
 
 {{/*
 Create chart name and version as used by the chart label.
 */}}
 {{- define "common.helpers.names.chart" -}}
-  {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" -}}
+  {{- $chartName := include "common.helpers.variables.getField" (list .Chart "Name") -}}
+  {{- $chartVersion := include "common.helpers.variables.getField" (list .Chart "Version") -}}
+  {{- printf "%s-%s" $chartName $chartVersion | replace "+" "_" | trunc 63 | trimSuffix "-" -}}
 {{- end }}
 
 {{/* Returns name of service account, if enabled */}}
@@ -194,7 +202,7 @@ usage: {{ include "common.helpers.names.serviceFQDN" ( list $ [name of service] 
 {{- define "common.helpers.names.serviceFQDN" -}}
   {{- $root := index . 0 -}}
   {{- $serviceName := index . 1 -}}
-  {{- $chart := $root.Chart.Name -}}
+  {{- $chart := include "common.helpers.variables.getField" (list $root.Chart "Name") -}}
   {{- if ge (len .) 3 -}}
     {{- $chart = index . 2 -}}
   {{- end -}}
@@ -251,7 +259,7 @@ Usage:
     {{- $chart = index . 1 | default "" -}}
   {{- end -}}
   {{- if eq $chart "" -}}
-    {{- $chart = $ctx.Chart.Name -}}
+    {{- $chart = include "common.helpers.variables.getField" (list $ctx.Chart "Name") -}}
   {{- end -}}
 
   {{- $fullName := include "common.helpers.names.chartFullname" (list $ctx $chart) -}}
@@ -362,13 +370,13 @@ usage: {{ include "common.helpers.names.serviceName" ( list $ [name of service] 
       {{- $ignoreServiceExists = true -}}
     {{- end -}}
   {{- end -}}
-  {{- $chartName := $root.Chart.Name -}}
+  {{- $chartName := include "common.helpers.variables.getField" (list $root.Chart "Name") -}}
   {{- if ge (len .) 4 -}}
     {{- $chartName = index . 3 -}}
   {{- end -}}
   {{- $fullName := include "common.helpers.names.chartFullname" (list $root $chartName) -}}
   {{- $names := list -}}
-  {{- if eq $root.Chart.Name $chartName -}}
+  {{- if eq (include "common.helpers.variables.getField" (list $root.Chart "Name")) $chartName -}}
     {{- range $name, $service := $root.Values.service -}}
       {{- if and (kindIs "map" $service) (gt (len $service) 0) -}}
         {{- $names = append $names ($service.name | default $name) -}}

@@ -28,7 +28,30 @@ env:
 {{- end }}
 
 {{/*
-usage: {{ include "common.tpl.env.envFrom" (list $ .) }}
+Generate envFrom references for secrets and configMaps
+
+Usage: {{ include "common.tpl.env.envFrom" (list $ .) }}
+
+Expected values structure:
+  envFrom:
+    <name>:                     # Reference name (used as resource name if 'name' not specified)
+      type: secret              # Required: "secret" or "configMap"
+      name: custom-name         # Optional: Override resource name (defaults to <name>)
+      useFromChart: true        # Optional: Prepend fullname to resource (default: true)
+
+Examples:
+  envFrom:
+    app-config:                 # Creates configMapRef to <fullname>-app-config
+      type: configMap
+    
+    external-secret:            # Creates secretRef to my-external-secret (exact name)
+      type: secret
+      name: my-external-secret
+      useFromChart: false
+      
+    db-credentials:             # Creates secretRef to <fullname>-db-creds
+      type: secret
+      name: db-creds
 */}}
 {{- define "common.tpl.env.envFrom" -}}
   {{- $root := index . 0 -}}
