@@ -8,6 +8,10 @@
     {{- $chartName := printf "%s-%s" ($componentValues.Chart.Name | default $componentValues.Chart.name) $component -}}
     {{- $_ := set $componentValues.Chart "name" $chartName -}}
     {{- $_ := set $componentValues.Chart "Name" $chartName -}}
+    {{- $baseFullName := include "common.helpers.names.fullname" $root -}}
+    {{- if not $componentValues.Values.fullnameOverride -}}
+      {{- $_ := set $componentValues.Values "fullnameOverride" (printf "%s-%s" $baseFullName $component) -}}
+    {{- end -}}
     {{- $componentDns := include "common.helpers.names.DNSNames" $componentValues | fromYamlArray -}}
     {{- $dnsNames = concat $dnsNames $componentDns -}}
   {{- end -}}
@@ -133,6 +137,10 @@ shared-config:
   {{- $masterValues := include "common.helpers.componentValues" (list $ctx "master" $omitKeys) | fromYaml -}}
   {{- $_ := set $masterValues.Chart "name" (printf "%s-master" $ctx.Chart.Name) -}}
   {{- $_ := set $masterValues.Chart "Name" (printf "%s-master" $ctx.Chart.Name) -}}
+  {{- $baseFullName := include "common.helpers.names.fullname" $ctx -}}
+  {{- if not $masterValues.Values.fullnameOverride -}}
+    {{- $_ := set $masterValues.Values "fullnameOverride" (printf "%s-master" $baseFullName) -}}
+  {{- end -}}
   {{- $servers := list -}}
   {{- $serviceFQDN := include "common.helpers.names.stsServiceFQDN" $masterValues -}}
   {{- range $pod := (include "common.helpers.names.podNames" (list $masterValues)) | fromYamlArray -}}
@@ -152,6 +160,9 @@ shared-config:
   {{- $chartName := printf "%s-master" $ctx.Chart.Name -}}
   {{- $_ := set $masterValues.Chart "name" $chartName -}}
   {{- $_ := set $masterValues.Chart "Name" $chartName -}}
+  {{- if not $masterValues.Values.fullnameOverride -}}
+    {{- $_ := set $masterValues.Values "fullnameOverride" (printf "%s-master" $fullName) -}}
+  {{- end -}}
 
   {{- $_ := (include "seaweedfs.healthSidecar" (list $masterValues "liveness")) | fromYaml | merge $masterValues.Values -}}
 
@@ -180,6 +191,9 @@ shared-config:
   {{- $chartName := printf "%s-filer" $ctx.Chart.Name -}}
   {{- $_ := set $filerValues.Chart "name" $chartName -}}
   {{- $_ := set $filerValues.Chart "Name" $chartName -}}
+  {{- if not $filerValues.Values.fullnameOverride -}}
+    {{- $_ := set $filerValues.Values "fullnameOverride" (printf "%s-filer" $fullName) -}}
+  {{- end -}}
 
   {{- $_ := (include "seaweedfs.healthSidecar" (list $filerValues "liveness")) | fromYaml | merge $filerValues.Values -}}
 
@@ -214,6 +228,9 @@ shared-config:
   {{- $chartName := printf "%s-volume" $ctx.Chart.Name -}}
   {{- $_ := set $volumeValues.Chart "name" $chartName -}}
   {{- $_ := set $volumeValues.Chart "Name" $chartName -}}
+  {{- if not $volumeValues.Values.fullnameOverride -}}
+    {{- $_ := set $volumeValues.Values "fullnameOverride" (printf "%s-volume" $fullName) -}}
+  {{- end -}}
 
   {{- $_ := (include "seaweedfs.healthSidecar" (list $volumeValues "liveness")) | fromYaml | merge $volumeValues.Values -}}
 
@@ -261,6 +278,9 @@ shared-config:
     {{- $filerValues := include "common.helpers.componentValues" (list $ctx "filer" (list "master" "filer" "volume" "filerSync")) | fromYaml -}}
     {{- $_ := set $filerValues.Chart "name" (printf "%s-filer" $ctx.Chart.Name) -}}
     {{- $_ := set $filerValues.Chart "Name" (printf "%s-filer" $ctx.Chart.Name) -}}
+    {{- if not $filerValues.Values.fullnameOverride -}}
+      {{- $_ := set $filerValues.Values "fullnameOverride" (printf "%s-filer" $fullName) -}}
+    {{- end -}}
     {{- $filerLbFQDN := include "common.helpers.names.serviceFQDN" (list $filerValues "lb" "seaweedfs-filer" true) -}}
     {{- $_ := set $env "SOURCE_FILER" (printf "%s:8888" $filerLbFQDN) -}}
   {{- end -}}
@@ -317,16 +337,25 @@ shared-config:
   {{- $backupChartName := $backupValues.Chart.Name | default $backupValues.Chart.name -}}
   {{- $_ := set $filerValues.Chart "name" (printf "%s-filer" $backupChartName) -}}
   {{- $_ := set $filerValues.Chart "Name" (printf "%s-filer" $backupChartName) -}}
+  {{- if not $filerValues.Values.fullnameOverride -}}
+    {{- $_ := set $filerValues.Values "fullnameOverride" (printf "%s-filer" $fullName) -}}
+  {{- end -}}
   {{- $filerLbFQDN := include "common.helpers.names.serviceFQDN" (list $filerValues "lb" "seaweedfs-filer" true) -}}
 
   {{- $masterValues := include "common.helpers.componentValues" (list $ctx "master" (list "master" "filer" "volume" "resticBackup")) | fromYaml -}}
   {{- $_ := set $masterValues.Chart "name" (printf "%s-master" $backupChartName) -}}
   {{- $_ := set $masterValues.Chart "Name" (printf "%s-master" $backupChartName) -}}
+  {{- if not $masterValues.Values.fullnameOverride -}}
+    {{- $_ := set $masterValues.Values "fullnameOverride" (printf "%s-master" $fullName) -}}
+  {{- end -}}
   {{- $masterServiceFQDN := include "common.helpers.names.serviceFQDN" (list $masterValues "main" "seaweedfs-master" true) -}}
 
   {{- $chartName := printf "%s-backup" $backupChartName -}}
   {{- $_ := set $backupValues.Chart "name" $chartName -}}
   {{- $_ := set $backupValues.Chart "Name" $chartName -}}
+  {{- if not $backupValues.Values.fullnameOverride -}}
+    {{- $_ := set $backupValues.Values "fullnameOverride" (printf "%s-backup" $fullName) -}}
+  {{- end -}}
 
   {{- /* Set up environment variables */ -}}
   {{- $env := (omit $backupValues.Values.env "SERVICE_FQDN" "POD_FQDN") | default dict -}}
@@ -385,11 +414,17 @@ shared-config:
   {{- $chartName := printf "%s-post-up" ($postUpValues.Chart.Name | default $postUpValues.Chart.name) -}}
   {{- $_ := set $postUpValues.Chart "name" $chartName -}}
   {{- $_ := set $postUpValues.Chart "Name" $chartName -}}
+  {{- if not $postUpValues.Values.fullnameOverride -}}
+    {{- $_ := set $postUpValues.Values "fullnameOverride" (printf "%s-post-up" $fullName) -}}
+  {{- end -}}
 
   {{- /* Get master service FQDN */ -}}
   {{- $masterValues := include "common.helpers.componentValues" (list $ctx "master" $omitKeys) | fromYaml -}}
   {{- $_ := set $masterValues.Chart "name" (printf "%s-master" $ctx.Chart.Name) -}}
   {{- $_ := set $masterValues.Chart "Name" (printf "%s-master" $ctx.Chart.Name) -}}
+  {{- if not $masterValues.Values.fullnameOverride -}}
+    {{- $_ := set $masterValues.Values "fullnameOverride" (printf "%s-master" $fullName) -}}
+  {{- end -}}
   {{- $masterServiceFQDN := include "common.helpers.names.serviceFQDN" (list $masterValues "main" "seaweedfs-master" true) -}}
 
   {{- /* Build COLLECTIONS env var from postUp.collections */ -}}
