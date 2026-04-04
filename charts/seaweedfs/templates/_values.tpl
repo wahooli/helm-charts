@@ -249,7 +249,7 @@ shared-config:
   {{- $filerSyncBase := include "common.helpers.componentValues" (list $ctx "filerSync.__base__" (list "master" "filer" "volume" "filerSync")) | fromYaml -}}
   {{- $filerSyncInstanceValues := include "common.helpers.componentValues" (list $ctx (printf "filerSync.%s" $instance) (list "master" "filer" "volume" "filerSync")) | fromYaml -}}
   
-  {{- $filerSyncValues := merge $filerSyncBase $filerSyncInstanceValues -}}
+  {{- $filerSyncValues := mustMergeOverwrite $filerSyncBase $filerSyncInstanceValues -}}
   {{- $instanceName := regexReplaceAll "[^a-z0-9-]+" (lower ($filerSyncValues.name | default $instance)) "-" -}}
 
   {{- if not (hasKey $filerSyncValues "workloadType") -}}
