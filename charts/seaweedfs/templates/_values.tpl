@@ -5,7 +5,7 @@
   {{- $components := list "master" "filer" "volume" -}}
   {{- range $component := $components -}}
     {{- $componentValues := include "common.helpers.componentValues" (list $root $component $components) | fromYaml -}}
-    {{- $chartName := printf "%s-%s" $componentValues.Chart.Name $component -}}
+    {{- $chartName := printf "%s-%s" ($componentValues.Chart.Name | default $componentValues.Chart.name) $component -}}
     {{- $_ := set $componentValues.Chart "name" $chartName -}}
     {{- $_ := set $componentValues.Chart "Name" $chartName -}}
     {{- $componentDns := include "common.helpers.names.DNSNames" $componentValues | fromYamlArray -}}
@@ -259,13 +259,15 @@ shared-config:
   {{- $env := (omit $filerSyncValues.Values.env "SERVICE_FQDN" "POD_FQDN") | default dict -}}
   {{- if not (hasKey $env "SOURCE_FILER") -}}
     {{- $filerValues := include "common.helpers.componentValues" (list $ctx "filer" (list "master" "filer" "volume" "filerSync")) | fromYaml -}}
+    {{- $_ := set $filerValues.Chart "name" (printf "%s-filer" $ctx.Chart.Name) -}}
     {{- $_ := set $filerValues.Chart "Name" (printf "%s-filer" $ctx.Chart.Name) -}}
     {{- $filerLbFQDN := include "common.helpers.names.serviceFQDN" (list $filerValues "lb" "seaweedfs-filer" true) -}}
     {{- $_ := set $env "SOURCE_FILER" (printf "%s:8888" $filerLbFQDN) -}}
   {{- end -}}
   {{- $_ := set $filerSyncValues.Values "env" $env -}}
 
-  {{- $chartName := printf "%s-filer-sync-%s" $filerSyncValues.Chart.Name $instanceName -}}
+  {{- $chartName := printf "%s-filer-sync-%s" ($filerSyncValues.Chart.Name | default $filerSyncValues.Chart.name) $instanceName -}}
+  {{- $_ := set $filerSyncValues.Chart "name" $chartName -}}
   {{- $_ := set $filerSyncValues.Chart "Name" $chartName -}}
 
   {{- /* setting container args */ -}}
@@ -312,14 +314,18 @@ shared-config:
 
   {{- /* Get filer and master service FQDNs */ -}}
   {{- $filerValues := include "common.helpers.componentValues" (list $ctx "filer" (list "master" "filer" "volume" "resticBackup")) | fromYaml -}}
-  {{- $_ := set $filerValues.Chart "Name" (printf "%s-filer" $backupValues.Chart.Name) -}}
+  {{- $backupChartName := $backupValues.Chart.Name | default $backupValues.Chart.name -}}
+  {{- $_ := set $filerValues.Chart "name" (printf "%s-filer" $backupChartName) -}}
+  {{- $_ := set $filerValues.Chart "Name" (printf "%s-filer" $backupChartName) -}}
   {{- $filerLbFQDN := include "common.helpers.names.serviceFQDN" (list $filerValues "lb" "seaweedfs-filer" true) -}}
 
   {{- $masterValues := include "common.helpers.componentValues" (list $ctx "master" (list "master" "filer" "volume" "resticBackup")) | fromYaml -}}
-  {{- $_ := set $masterValues.Chart "Name" (printf "%s-master" $backupValues.Chart.Name) -}}
+  {{- $_ := set $masterValues.Chart "name" (printf "%s-master" $backupChartName) -}}
+  {{- $_ := set $masterValues.Chart "Name" (printf "%s-master" $backupChartName) -}}
   {{- $masterServiceFQDN := include "common.helpers.names.serviceFQDN" (list $masterValues "main" "seaweedfs-master" true) -}}
 
-  {{- $chartName := printf "%s-backup" $backupValues.Chart.Name -}}
+  {{- $chartName := printf "%s-backup" $backupChartName -}}
+  {{- $_ := set $backupValues.Chart "name" $chartName -}}
   {{- $_ := set $backupValues.Chart "Name" $chartName -}}
 
   {{- /* Set up environment variables */ -}}
@@ -376,11 +382,13 @@ shared-config:
   {{- $postUpValues := include "common.helpers.componentValues" (list $ctx "postUp" $omitKeys) | fromYaml -}}
 
   {{- $_ := set $postUpValues.Values "workloadType" "Deployment" -}}
-  {{- $chartName := printf "%s-post-up" $postUpValues.Chart.Name -}}
+  {{- $chartName := printf "%s-post-up" ($postUpValues.Chart.Name | default $postUpValues.Chart.name) -}}
+  {{- $_ := set $postUpValues.Chart "name" $chartName -}}
   {{- $_ := set $postUpValues.Chart "Name" $chartName -}}
 
   {{- /* Get master service FQDN */ -}}
   {{- $masterValues := include "common.helpers.componentValues" (list $ctx "master" $omitKeys) | fromYaml -}}
+  {{- $_ := set $masterValues.Chart "name" (printf "%s-master" $ctx.Chart.Name) -}}
   {{- $_ := set $masterValues.Chart "Name" (printf "%s-master" $ctx.Chart.Name) -}}
   {{- $masterServiceFQDN := include "common.helpers.names.serviceFQDN" (list $masterValues "main" "seaweedfs-master" true) -}}
 
