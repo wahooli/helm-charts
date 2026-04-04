@@ -2,10 +2,10 @@
 {{- $fullname := include "common.helpers.names.fullname" . -}}
 {{- $backupValues := include "seaweedfs.backupValues" . | fromYaml -}}
 {{- $_ := set $backupValues.Values.env "OPERATION" "backup" -}}
-{{- $restartPolicy := $backupValues.Values.restartPolicy -}}
+{{- $restartPolicy := $backupValues.Values.restartPolicy | default "Never" -}}
 {{- $_ := unset $backupValues.Values "restartPolicy" -}}
 {{- $podYaml := include "common.tpl.pod" $backupValues | fromYaml -}}
-{{- $_ := set $podYaml.spec "restartPolicy" $restartPolicy | default "Never" -}}
+{{- $_ := unset $podYaml.spec "restartPolicy" -}}
 ---
 apiVersion: batch/v1
 kind: CronJob
