@@ -163,7 +163,7 @@ shared-config:
   {{- $args = concat $args (list "-port=9333" "-port.grpc=19333" (printf "-peers=%s" (join "," $peers)) (printf "-defaultReplication=%s" ($masterValues.Values.defaultReplication | toString))) -}}
 
   {{- /* certificate args and mount */ -}}
-  {{- $_ := include "seaweedfs.tlsPersistence" (list $masterValues $fullName) | fromYaml | merge $masterValues.Values.persistence -}}
+  {{- $_ := include "seaweedfs.tlsPersistence" (list $masterValues $fullName) | fromYaml | merge (($masterValues.Values).persistence | default dict) -}}
 
   {{- $_ := set $masterValues.Values "args" (concat $args ($masterValues.Values.sharedArgs | default list)) -}}
   {{- $masterValues | toYaml -}}
@@ -197,7 +197,7 @@ shared-config:
   {{- end -}}
 
   {{- /* certificate configuration and mount */ -}}
-  {{- $_ := include "seaweedfs.tlsPersistence" (list $filerValues $fullName) | fromYaml | merge $filerValues.Values.persistence -}}
+  {{- $_ := include "seaweedfs.tlsPersistence" (list $filerValues $fullName) | fromYaml | merge (($filerValues.Values).persistence | default dict) -}}
 
   {{- $_ := set $filerValues.Values "args" (concat $args ($filerValues.Values.sharedArgs | default list)) -}}
   {{- $filerValues | toYaml -}}
@@ -231,7 +231,7 @@ shared-config:
   {{- end -}}
 
   {{- /* certificate args and mount */ -}}
-  {{- $_ := include "seaweedfs.tlsPersistence" (list $volumeValues $fullName) | fromYaml | merge $volumeValues.Values.persistence -}}
+  {{- $_ := include "seaweedfs.tlsPersistence" (list $volumeValues $fullName) | fromYaml | merge (($volumeValues.Values).persistence | default dict) -}}
 
   {{- $_ := set $volumeValues.Values "args" (concat $args ($volumeValues.Values.sharedArgs | default list)) -}}
   {{- $volumeValues | toYaml -}}
@@ -248,7 +248,7 @@ shared-config:
 
   {{- $filerSyncBase := include "common.helpers.componentValues" (list $ctx "filerSync.__base__" (list "master" "filer" "volume" "filerSync")) | fromYaml -}}
   {{- $filerSyncInstanceValues := include "common.helpers.componentValues" (list $ctx (printf "filerSync.%s" $instance) (list "master" "filer" "volume" "filerSync")) | fromYaml -}}
-
+  
   {{- $filerSyncValues := merge $filerSyncBase $filerSyncInstanceValues -}}
   {{- $instanceName := regexReplaceAll "[^a-z0-9-]+" (lower ($filerSyncValues.name | default $instance)) "-" -}}
 
@@ -282,8 +282,8 @@ shared-config:
   {{- end -}}
 
   {{- /* certificate args and mount */ -}}
-  {{- $_ := include "seaweedfs.tlsPersistence" (list $filerSyncValues $fullName) | fromYaml | merge $filerSyncValues.Values.persistence -}}
-
+  {{- $_ := include "seaweedfs.tlsPersistence" (list $filerSyncValues $fullName) | fromYaml | merge (($filerSyncValues.Values).persistence | default dict) -}}
+  {{- $_ := set $filerSyncValues.Values "workloadType" "Deployment" -}}
   {{- $_ := set $filerSyncValues.Values "args" (uniq $args) -}}
   {{- $filerSyncValues | toYaml -}}
 {{- end }}
@@ -361,7 +361,7 @@ shared-config:
   {{- end -}}
 
   {{- /* Add TLS certificate volume and config if enabled */ -}}
-  {{- $_ := include "seaweedfs.tlsPersistence" (list $backupValues $fullName) | fromYaml | merge $backupValues.Values.persistence -}}
+  {{- $_ := include "seaweedfs.tlsPersistence" (list $backupValues $fullName) | fromYaml | merge (($backupValues.Values).persistence | default dict) -}}
 
   {{- $backupValues | toYaml -}}
 {{- end }}
@@ -404,7 +404,7 @@ shared-config:
   {{- $_ := set $postUpValues.Values "env" $env -}}
 
   {{- /* Add TLS certificate volume and config if enabled */ -}}
-  {{- $_ := include "seaweedfs.tlsPersistence" (list $postUpValues $fullName) | fromYaml | merge $postUpValues.Values.persistence -}}
+  {{- $_ := include "seaweedfs.tlsPersistence" (list $postUpValues $fullName) | fromYaml | merge (($postUpValues.Values).persistence | default dict) -}}
 
   {{- $postUpValues | toYaml -}}
 {{- end }}
