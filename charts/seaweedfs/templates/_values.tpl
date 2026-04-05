@@ -304,7 +304,7 @@ shared-config:
   {{- end -}}
 
   {{- /* certificate args and mount */ -}}
-  {{- $_ := include "seaweedfs.tlsPersistence" (list $filerSyncValues $fullName) | fromYaml | merge (($filerSyncValues.Values).persistence | default dict) -}}
+  {{- $_ := set $filerSyncValues.Values "persistence" (include "seaweedfs.tlsPersistence" (list $filerSyncValues $fullName) | fromYaml | merge (($filerSyncValues.Values).persistence | default dict)) -}}
   {{- $_ := set $filerSyncValues.Values "workloadType" "Deployment" -}}
   {{- $_ := set $filerSyncValues.Values "args" (uniq $args) -}}
   {{- $filerSyncValues | toYaml -}}
