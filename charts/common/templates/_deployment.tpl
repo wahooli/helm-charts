@@ -12,7 +12,7 @@ metadata:
   {{- include "common.helpers.annotations.workloadAnnotations" . | nindent 2 }}
 spec:
   revisionHistoryLimit: {{ .Values.revisionHistoryLimit | default 10 }}
-  progressDeadlineSeconds: {{ .Values.progressDeadlineSeconds | default 10 }}
+  progressDeadlineSeconds: {{ .Values.progressDeadlineSeconds | default 600 }}
   {{- if not (.Values.autoscaling).enabled }}
   replicas: {{ .Values.replicaCount | default 1 }}
   {{- end }}

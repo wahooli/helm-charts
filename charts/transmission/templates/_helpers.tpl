@@ -26,9 +26,6 @@ sidecars:
     image: "{{ (.Values.wireguard.image).repository | default "ghcr.io/linuxserver/wireguard" }}:{{ (.Values.wireguard.image).tag | default "latest" }}"
     imagePullPolicy: {{ (.Values.wireguard.image).pullPolicy | default "IfNotPresent" }}
     securityContext:
-      sysctls:
-      - name: net.ipv4.conf.all.src_valid_mark
-        value: "1"
       privileged: true
       capabilities:
         add:
