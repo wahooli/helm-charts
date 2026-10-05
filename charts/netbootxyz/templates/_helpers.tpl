@@ -39,7 +39,7 @@ initContainers:
     imagePullPolicy: {{ .Values.image.pullPolicy }}
     command:
     - /download-assets.sh
-    {{- include "common.tpl.env" . | nindent 4 -}}
+    {{- include "common.tpl.env" (list $ .) | nindent 4 -}}
     {{- include "common.tpl.env.envFrom" (list $ .) | nindent 4 -}}
     {{- include "common.tpl.volumeMounts" . | nindent 4 -}}
 {{- end }}
