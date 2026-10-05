@@ -25,10 +25,13 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 data:
-    {{- range $configKey, $configValue := $configMap.data -}}
-      {{- $configKey | nindent 2 }}: |
-      {{- (tpl $configValue $) | nindent 4 }}
-    {{ end -}}
+    {{- range $configKey, $configValue := $configMap.data }}
+      {{- $rendered := tpl $configValue $ }}
+      {{- $parsed := fromYaml (printf "value: |%s\n" ($rendered | nindent 2)) }}
+      {{- $value := $rendered }}
+      {{- if hasKey $parsed "value" }}{{ $value = $parsed.value | default "" }}{{ end }}
+  {{ $configKey }}: {{ $value | toJson }}
+    {{- end }}
   {{- end -}}
   {{- end -}}
 {{- end }}
