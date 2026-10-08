@@ -26,17 +26,30 @@ if [ -z "$COLLECTIONS" ]; then
   exit 0
 fi
 
-# Build batched weed shell commands
-commands=""
-has_replication=false
-
+# Create buckets one at a time, skipping existing ones
 while IFS=: read -r name replication; do
   [ -z "$name" ] && continue
-  commands="${commands}s3.bucket.create -name ${name}
-"
+  if output=$(echo "s3.bucket.create -name ${name}" | /usr/bin/weed shell -master="$MASTER" 2>&1); then
+    status=0
+  else
+    status=$?
+  fi
+  case "$output" in
+    *"already exists"*)
+      echo "Bucket ${name} already exists"
+      ;;
+    *)
+      echo "$output"
+      [ "$status" -eq 0 ] || exit "$status"
+      ;;
+  esac
 done <<EOF
 $COLLECTIONS
 EOF
+
+# Build batched weed shell commands
+commands=""
+has_replication=false
 
 # Add lock + replication configuration + unlock as a single locked session
 while IFS=: read -r name replication; do
@@ -58,10 +71,9 @@ if [ "$has_replication" = true ]; then
   commands="${commands}volume.fix.replication -force
 unlock
 "
+  echo "Running weed shell commands:"
+  echo "$commands"
+  echo "$commands" | /usr/bin/weed shell -master="$MASTER"
 fi
-
-echo "Running weed shell commands:"
-echo "$commands"
-echo "$commands" | /usr/bin/weed shell -master="$MASTER"
 
 echo "Post-up completed successfully"
