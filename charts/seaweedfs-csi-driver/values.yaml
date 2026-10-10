@@ -467,7 +467,8 @@ nodeGc:
   enabled: false
   workloadType: DaemonSet
   serviceAccount:
-    automount: false
+    automount: true
+  automountServiceAccountToken: true
   priorityClassName: system-node-critical
   image:
     repository: ghcr.io/wahooli/docker/kubectl
