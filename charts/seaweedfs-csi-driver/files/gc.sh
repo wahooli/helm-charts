@@ -7,6 +7,7 @@ SLEEP_STEP=10                        # check every 10 seconds
 terminated=false
 LOG_LEVEL=${LOG_LEVEL:-info}  # default log level
 export LOG_LEVEL
+NODE_ID=${NODE_ID:?NODE_ID must be set}
 
 log() {
   level=$1
@@ -29,11 +30,38 @@ log() {
   esac
 }
 
+has_vol_data() {
+  for f in "$CSI_DIR"/*/vol_data.json; do
+    [ -f "$f" ] && return 0
+  done
+  return 1
+}
+
+# Print volumeHandles of PVs attached to this node by their own CSI driver
+list_live_handles() {
+  pvs=$(kubectl get --raw /api/v1/persistentvolumes) || return 1
+  vas=$(kubectl get --raw /apis/storage.k8s.io/v1/volumeattachments) || return 1
+  printf '%s\n%s\n' "$pvs" "$vas" | jq -rs --arg node "$NODE_ID" '
+    (.[0].items | map(select(.spec.csi) | {key: .metadata.name, value: .spec.csi}) | from_entries) as $csi
+    | .[1].items[]
+    | select(.spec.nodeName == $node and .status.attached == true and .spec.source.persistentVolumeName != null)
+    | $csi[.spec.source.persistentVolumeName] as $pv
+    | select($pv != null and $pv.driver == .spec.attacher)
+    | $pv.volumeHandle'
+}
+
 # Handle SIGTERM gracefully
 trap 'log info "Termination signal received, exiting..."; terminated=true' SIGTERM SIGINT
 
 while true; do
   log info "Running GC loop..."
+
+  live_handles=""
+  api_ok=true
+  if has_vol_data && ! live_handles=$(list_live_handles); then
+    log warn "Failed to list PVs and VolumeAttachments, skipping volumes with vol_data.json"
+    api_ok=false
+  fi
 
   # Iterate over all volume dirs
   for voldir in "$CSI_DIR"/*; do
@@ -43,28 +71,23 @@ while true; do
     globalmount="$voldir/globalmount"
 
     volume_handle=""
-    driver_name=""
 
     if [ -f "$vol_data_file" ]; then
-      volume_handle=$(jq -r '.volumeHandle' "$vol_data_file")
-      driver_name=$(jq -r '.driverName' "$vol_data_file")
+      volume_handle=$(jq -r '.volumeHandle // empty' "$vol_data_file")
     else
       log debug "No vol_data.json found, treating as orphan candidate: $voldir"
     fi
 
     if [ -n "$volume_handle" ]; then
-      log debug "checking from api that does $volume_handle have live attachment..."
-      pv_name=$(kubectl get pv -o json | jq -r ".items[] | select(.spec.csi.volumeHandle==\"$volume_handle\") | .metadata.name")
-      if [ -z "$pv_name" ]; then
-        log debug "No PV found for volumeHandle: $volume_handle"
-      else
-        log debug "Found PV $pv_name for volumeHandle: $volume_handle"
-        attached=$(kubectl get volumeattachment -o json | jq -r ".items[] | select(.spec.source.persistentVolumeName==\"$pv_name\" and .spec.attacher==\"$driver_name\" and .status.attached==true) | .metadata.name")
-        if [ -n "$attached" ]; then
-          log debug "Skipping live volume: $volume_handle (VolumeAttachment exists: $attached)"
-          continue
-        fi
+      if [ "$api_ok" = false ]; then
+        log debug "API unavailable, skipping: $voldir"
+        continue
       fi
+      if printf '%s\n' "$live_handles" | grep -qxF "$volume_handle"; then
+        log debug "Skipping live volume: $volume_handle (attached to $NODE_ID)"
+        continue
+      fi
+      log debug "No VolumeAttachment on $NODE_ID for volumeHandle: $volume_handle"
     fi
 
     if [ -e "$globalmount" ]; then
