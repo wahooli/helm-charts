@@ -30,13 +30,6 @@ log() {
   esac
 }
 
-has_vol_data() {
-  for f in "$CSI_DIR"/*/vol_data.json; do
-    [ -f "$f" ] && return 0
-  done
-  return 1
-}
-
 # Print volumeHandles of PVs attached to this node by their own CSI driver
 list_live_handles() {
   pvs=$(kubectl get --raw /api/v1/persistentvolumes) || return 1
@@ -56,12 +49,9 @@ trap 'log info "Termination signal received, exiting..."; terminated=true' SIGTE
 while true; do
   log info "Running GC loop..."
 
+  # The API is only queried once a dir is a removal candidate
   live_handles=""
-  api_ok=true
-  if has_vol_data && ! live_handles=$(list_live_handles); then
-    log warn "Failed to list PVs and VolumeAttachments, skipping volumes with vol_data.json"
-    api_ok=false
-  fi
+  api_state=unknown
 
   # Iterate over all volume dirs
   for voldir in "$CSI_DIR"/*; do
@@ -69,6 +59,19 @@ while true; do
 
     vol_data_file="$voldir/vol_data.json"
     globalmount="$voldir/globalmount"
+
+    if [ -e "$globalmount" ]; then
+      if mountpoint -q "$globalmount"; then
+        log debug "Skipping mounted globalmount: $globalmount"
+        continue
+      fi
+    fi
+
+    contents=$(find "$voldir" -mindepth 1 ! -name 'vol_data.json' -print -quit 2>/dev/null || true)
+    if [ -n "$contents" ]; then
+      log debug "Directory exists and has content, skipping: $voldir"
+      continue
+    fi
 
     volume_handle=""
 
@@ -79,7 +82,15 @@ while true; do
     fi
 
     if [ -n "$volume_handle" ]; then
-      if [ "$api_ok" = false ]; then
+      if [ "$api_state" = unknown ]; then
+        if live_handles=$(list_live_handles); then
+          api_state=ok
+        else
+          log warn "Failed to list PVs and VolumeAttachments, skipping volumes with vol_data.json"
+          api_state=failed
+        fi
+      fi
+      if [ "$api_state" = failed ]; then
         log debug "API unavailable, skipping: $voldir"
         continue
       fi
@@ -90,21 +101,9 @@ while true; do
       log debug "No VolumeAttachment on $NODE_ID for volumeHandle: $volume_handle"
     fi
 
-    if [ -e "$globalmount" ]; then
-      if mountpoint -q "$globalmount"; then
-        log debug "Skipping mounted globalmount: $globalmount"
-        continue
-      fi
-    fi
-
-    contents=$(find "$voldir" -mindepth 1 ! -name 'vol_data.json' -print -quit 2>/dev/null || true)
-    if [ -z "$contents" ]; then
-      log info "Removing stale CSI dir: $voldir"
-      umount "$globalmount" 2>/dev/null || true
-      rm -rf "$voldir"
-    else
-      log debug "Directory exists and has content, skipping: $voldir"
-    fi
+    log info "Removing stale CSI dir: $voldir"
+    umount "$globalmount" 2>/dev/null || true
+    rm -rf "$voldir"
   done
 
   log debug "GC loop complete, sleeping $SLEEP_INTERVAL seconds..."
