@@ -60,7 +60,10 @@ while IFS=: read -r name replication; do
 "
       has_replication=true
     fi
-    commands="${commands}volume.configure.replication -collectionPattern ${name} -replication ${replication}
+    # Writes into the bucket get their replication from the filer's rule for its path. Without one they ask for the
+    # default replication, find no writable volume of it and grow new volumes, until no volume slots are left.
+    commands="${commands}fs.configure -locationPrefix=/buckets/${name}/ -replication=${replication} -apply
+volume.configure.replication -collectionPattern ${name} -replication ${replication}
 "
   fi
 done <<EOF
