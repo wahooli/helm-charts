@@ -17,7 +17,8 @@
   {{- end -}}
 certificates:
   shared:
-    dnsNames: 
+    commonName: {{ printf "%s.%s.svc.cluster.local" (include "common.helpers.names.fullname" $root) $root.Release.Namespace }}
+    dnsNames:
     - localhost
     - 127.0.0.1
     {{- toYaml $dnsNames | nindent 4 }}
